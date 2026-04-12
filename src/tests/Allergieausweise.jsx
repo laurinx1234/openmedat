@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, useTimer, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
 
 const LAENDER=["Österreich","Deutschland","Schweiz","Frankreich","Italien","Spanien","Portugal","Schweden","Norwegen","Finnland","Dänemark","Polen","Tschechien","Ungarn","Rumänien","Kroatien","Serbien","Slowenien","Slowakei","Bulgarien","Griechenland","Türkei","Russland","Ukraine","Litauen","Lettland","Estland","Georgien","Armenien","Japan","China","Indien","Pakistan","Iran","Irak","Israel","Ägypten","Marokko","Tunesien","Kenia","Südafrika","Nigeria","Brasilien","Argentinien","Chile","Peru","Mexiko","Kuba","USA","Kanada","Australien","Neuseeland","Mongolei","Namibia","Jordanien","Senegal","Bolivien","Ecuador","Costa Rica"]
 const ALLERGENE=["Erdnüsse","Milch","Eier","Weizen","Soja","Nüsse","Fisch","Krebstiere","Sellerie","Senf","Sesam","Lupinen","Latex","Jod","Penicillin","Ibuprofen","Aspirin","Codein","ASS","Cephalosporine","Tetracycline","Sulfonamide","Metronidazol","Clindamycin","Ciprofloxacin","Amoxicillin","Diclofenac","Morphin","Cortison","Metformin","Heparin","Bienenstiche","Wespen","Katzenhaare","Hundespeichel","Vogelfedern","Hausstaubmilben","Schimmel","Birke","Gräser","Holz","Sand","Kaffee","Schokolade","Gold","Aluminium","Plastik","Beton","Farbe","Leder","Wolle","Papier","Parfüm","Sonnenlicht","Mondlicht","Salzwasser","Delfine","Schnee","Gummi"]
@@ -141,20 +141,31 @@ export default function Allergieausweise({onBack}){
 
   useEffect(()=>{const h=e=>{const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[answer])
 
+  const skGroupDefs=[
+    [{v:2},{v:3},{v:4},{v:5},{v:6},{v:7},{v:8}].map((o,i)=>({action:()=>setSettings(s=>({...s,cardCount:o.v}))})),
+    [{v:5},{v:10},{v:15},{v:20},{v:30},{v:45},{v:60}].map((o,i)=>({action:()=>setSettings(s=>({...s,learnMin:o.v}))})),
+    [{v:5},{v:10},{v:15},{v:20},{v:25}].map((o,i)=>({action:()=>setSettings(s=>({...s,qCount:o.v}))})),
+  ]
+  const{isFocused:skF,isStartFocused:skS}=useSettingsKeyboard(skGroupDefs,startLearn,onBack)
   if(phase==='settings')return(
     <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
       <BackBtn onBack={onBack}/>
       <div style={{color:T.green,fontSize:24,fontWeight:'bold',marginBottom:24}}>Allergieausweise</div>
       <Card>
-        {[{label:'Anzahl Ausweise',key:'cardCount',opts:[{v:2,l:'2'},{v:3,l:'3'},{v:4,l:'4'},{v:5,l:'5'},{v:6,l:'6'},{v:7,l:'7'},{v:8,l:'8'}]},{label:'Merkzeit',key:'learnMin',opts:[{v:5,l:'5 Min'},{v:10,l:'10 Min'},{v:15,l:'15 Min'},{v:20,l:'20 Min'},{v:30,l:'30 Min'},{v:45,l:'45 Min'},{v:60,l:'60 Min'}]},{label:'Anzahl Fragen',key:'qCount',opts:[{v:5,l:'5'},{v:10,l:'10'},{v:15,l:'15'},{v:20,l:'20'},{v:25,l:'25'}]}].map(({label,key,opts})=>(
+        {[
+          {label:'Anzahl Ausweise',key:'cardCount',opts:[{v:2,l:'2'},{v:3,l:'3'},{v:4,l:'4'},{v:5,l:'5'},{v:6,l:'6'},{v:7,l:'7'},{v:8,l:'8'}],row:0},
+          {label:'Merkzeit',key:'learnMin',opts:[{v:5,l:'5 Min'},{v:10,l:'10 Min'},{v:15,l:'15 Min'},{v:20,l:'20 Min'},{v:30,l:'30 Min'},{v:45,l:'45 Min'},{v:60,l:'60 Min'}],row:1},
+          {label:'Anzahl Fragen',key:'qCount',opts:[{v:5,l:'5'},{v:10,l:'10'},{v:15,l:'15'},{v:20,l:'20'},{v:25,l:'25'}],row:2},
+        ].map(({label,key,opts,row})=>(
           <div key={key} style={{marginBottom:20}}>
             <div style={{color:T.muted,fontSize:13,marginBottom:8}}>{label}:</div>
             <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-              {opts.map(o=>(<button key={o.v} onClick={()=>setSettings(s=>({...s,[key]:o.v}))} style={{background:settings[key]===o.v?`${T.green}22`:T.surf2,border:`1px solid ${settings[key]===o.v?T.green:T.border}`,borderRadius:8,color:settings[key]===o.v?T.green:T.text,cursor:'pointer',padding:'8px 14px',fontSize:13}}>{o.l}</button>))}
+              {opts.map((o,i)=>(<button key={o.v} onClick={()=>setSettings(s=>({...s,[key]:o.v}))} style={{background:settings[key]===o.v?`${T.green}22`:T.surf2,border:`1px solid ${settings[key]===o.v?T.green:T.border}`,borderRadius:8,color:settings[key]===o.v?T.green:T.text,cursor:'pointer',padding:'8px 14px',fontSize:13,boxShadow:skF(row,i)?`0 0 0 2px ${T.green}`:'none'}}>{o.l}</button>))}
             </div>
           </div>
         ))}
-        <button onClick={startLearn} style={{background:T.green,border:'none',borderRadius:10,color:'#000',cursor:'pointer',padding:'14px 32px',fontSize:16,fontWeight:'bold',marginTop:8}}>Fotos laden & starten</button>
+        <button onClick={startLearn} style={{background:T.green,border:'none',borderRadius:10,color:'#000',cursor:'pointer',padding:'14px 32px',fontSize:16,fontWeight:'bold',marginTop:8,boxShadow:skS()?`0 0 0 3px ${T.green}88`:'none'}}>Fotos laden & starten</button>
+        <div style={{color:T.muted,fontSize:11,marginTop:12}}>← → Auswahl · ↑↓ Zeile · Enter bestätigen · Esc zurück</div>
       </Card>
     </div>
   )

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, TimerBadge, useTimer, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, TimerBadge, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
 import { makeTask as makeZahlen } from './Zahlenfolgen.jsx'
 import { makeTask as makeWort } from './Wortfluessigkeit.jsx'
 import { makeTask as makeImpl } from './Implikationen.jsx'
@@ -417,6 +417,8 @@ export default function Simulation({onBack}){
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
+  const simSkRows=[]
+  const{isStartFocused:simSkS}=useSettingsKeyboard(simSkRows,()=>{setPhaseIdx(0);setSimPhase('phase_card')},onBack)
   if(simPhase==='intro')return(
     <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
       <BackBtn onBack={onBack}/>
@@ -438,7 +440,8 @@ export default function Simulation({onBack}){
           </div>
         </div>
         <div style={{display:'flex',gap:12}}>
-          <button onClick={()=>{setPhaseIdx(0);setSimPhase('phase_card')}} style={{background:T.orange,border:'none',borderRadius:10,color:'#000',cursor:'pointer',padding:'14px 32px',fontSize:16,fontWeight:'bold'}}>Starten</button>
+          <button onClick={()=>{setPhaseIdx(0);setSimPhase('phase_card')}} style={{background:T.orange,border:'none',borderRadius:10,color:'#000',cursor:'pointer',padding:'14px 32px',fontSize:16,fontWeight:'bold',boxShadow:simSkS()?`0 0 0 3px ${T.orange}88`:'none'}}>Starten</button>
+        <div style={{color:T.muted,fontSize:11,marginTop:12}}>Enter starten · Esc zurück</div>
         </div>
       </Card>
     </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, ResultScreen, KeyHint, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, ProgressBar, ResultScreen, KeyHint, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
 
 // ─── Geometry ──────────────────────────────────────────────────────────────────
 function regPoly(n, cx=50, cy=50, r=44) {
@@ -312,6 +312,10 @@ export default function Figuren({ onBack }) {
     }
   }, [answer, showFb, fbReady])
 
+  const skRows=[
+    [{action:()=>setCount(15)},{action:()=>setCount(0)}],
+  ]
+  const{isFocused:skF,isStartFocused:skS}=useSettingsKeyboard(skRows,startGame,onBack)
   if (mode === 'settings') return (
     <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
       <BackBtn onBack={onBack}/>
@@ -320,12 +324,13 @@ export default function Figuren({ onBack }) {
         <div style={{marginBottom:24}}>
           <div style={{color:T.muted,fontSize:13,marginBottom:10}}>Anzahl Aufgaben:</div>
           <div style={{display:'flex',gap:8}}>
-            {[{v:15,l:'15  (20 Min)'},{v:0,l:'∞  Endlosmodus'}].map(o => (
-              <button key={o.v} onClick={() => setCount(o.v)} style={{background:count===o.v?`${T.teal}22`:T.surf2,border:`1px solid ${count===o.v?T.teal:T.border}`,borderRadius:8,color:count===o.v?T.teal:T.text,cursor:'pointer',padding:'8px 18px',fontSize:14}}>{o.l}</button>
+            {[{v:15,l:'15  (20 Min)'},{v:0,l:'∞  Endlosmodus'}].map((o,i) => (
+              <button key={o.v} onClick={() => setCount(o.v)} style={{background:count===o.v?`${T.teal}22`:T.surf2,border:`1px solid ${count===o.v?T.teal:T.border}`,borderRadius:8,color:count===o.v?T.teal:T.text,cursor:'pointer',padding:'8px 18px',fontSize:14,boxShadow:skF(0,i)?`0 0 0 2px ${T.teal}`:'none'}}>{o.l}</button>
             ))}
           </div>
         </div>
-        <button onClick={startGame} style={{background:T.teal,border:'none',borderRadius:10,color:'#000',cursor:'pointer',padding:'14px 32px',fontSize:16,fontWeight:'bold'}}>Starten</button>
+        <button onClick={startGame} style={{background:T.teal,border:'none',borderRadius:10,color:'#000',cursor:'pointer',padding:'14px 32px',fontSize:16,fontWeight:'bold',boxShadow:skS()?`0 0 0 3px ${T.teal}88`:'none'}}>Starten</button>
+        <div style={{color:T.muted,fontSize:11,marginTop:12}}>← → Auswahl · ↑↓ Zeile · Enter bestätigen · Esc zurück</div>
       </Card>
     </div>
   )
