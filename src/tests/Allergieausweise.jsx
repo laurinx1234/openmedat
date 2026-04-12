@@ -146,7 +146,7 @@ export default function Allergieausweise({onBack}){
     [{v:5},{v:10},{v:15},{v:20},{v:30},{v:45},{v:60}].map((o,i)=>({action:()=>setSettings(s=>({...s,learnMin:o.v}))})),
     [{v:5},{v:10},{v:15},{v:20},{v:25}].map((o,i)=>({action:()=>setSettings(s=>({...s,qCount:o.v}))})),
   ]
-  const{isFocused:skF,isStartFocused:skS}=useSettingsKeyboard(skGroupDefs,startLearn,onBack)
+  const{isFocused:skF,isStartFocused:skS}=useSettingsKeyboard(skGroupDefs,startLearn,onBack,phase==='settings')
   if(phase==='settings')return(
     <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
       <BackBtn onBack={onBack}/>

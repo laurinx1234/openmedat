@@ -58,7 +58,7 @@ export default function Wortfluessigkeit({onBack}){
     [{action:()=>setCount(15)},{action:()=>setCount(0)}],
     [{action:()=>setDisplayMode('gemischt')},{action:()=>setDisplayMode('getrennt')}],
   ]
-  const{isFocused:skF,isStartFocused:skS}=useSettingsKeyboard(skRows,startGame,onBack)
+  const{isFocused:skF,isStartFocused:skS}=useSettingsKeyboard(skRows,startGame,onBack,mode==='settings')
   if(mode==='settings')return(
     <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
       <BackBtn onBack={onBack}/>
