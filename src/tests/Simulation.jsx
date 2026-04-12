@@ -418,7 +418,7 @@ export default function Simulation({onBack}){
 
   // ── Render ────────────────────────────────────────────────────────────────
   const simSkRows=[]
-  const{isStartFocused:simSkS}=useSettingsKeyboard(simSkRows,()=>{setPhaseIdx(0);setSimPhase('phase_card')},onBack)
+  const{isStartFocused:simSkS}=useSettingsKeyboard(simSkRows,()=>{setPhaseIdx(0);setSimPhase('phase_card')},onBack,simPhase==='intro')
   if(simPhase==='intro')return(
     <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
       <BackBtn onBack={onBack}/>

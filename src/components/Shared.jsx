@@ -127,19 +127,18 @@ export function SettingRow({ label, options, value, onChange }) {
 
 // ─── Keyboard navigation for settings screens ─────────────────────────────────
 // rows: 2D array of { action } objects. rows.length index = Start button.
-export function useSettingsKeyboard(rows, onStart, onBack) {
+// active: only attach keyboard handler when true (pass mode==='settings')
+export function useSettingsKeyboard(rows, onStart, onBack, active) {
   const [pos, setPos] = useState([0, 0])
-  const ref = useRef({ pos:[0,0], rows, onStart, onBack })
-  // Keep ref current on every render
-  ref.current.rows = rows
-  ref.current.onStart = onStart
-  ref.current.onBack = onBack
-  ref.current.pos = pos
+  const ref = useRef({})
+  // Always keep ref current so the handler sees latest values
+  ref.current = { pos, rows, onStart, onBack, active }
 
   useEffect(() => {
+    if (!active) return  // detach when not in settings mode
     const h = e => {
       const { pos:[r,c], rows, onStart, onBack } = ref.current
-      const maxRow = rows.length  // maxRow = Start button row index
+      const maxRow = rows.length
       let nr=r, nc=c, moved=false
 
       if      (e.key==='ArrowRight' && r<maxRow) { nc=Math.min(c+1,rows[r].length-1); moved=true }
@@ -166,11 +165,11 @@ export function useSettingsKeyboard(rows, onStart, onBack) {
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [])  // stable: all latest values read from ref
+  }, [active])  // re-attach/detach when active changes
 
   return {
     isFocused: (r, c) => pos[0]===r && pos[1]===c,
-    isStartFocused: pos[0] >= (ref.current.rows.length),
+    isStartFocused: () => pos[0] >= ref.current.rows.length,
   }
 }
 

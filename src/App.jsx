@@ -9,13 +9,27 @@ import Figuren from './tests/Figuren.jsx'
 import Simulation from './tests/Simulation.jsx'
 
 const TESTS = [
-  { id:'zahlenfolgen',    path:'/zahlenfolgen',    title:'Zahlenfolgen',           icon:'🔢', desc:'7 Zahlen → 8. und 9. Stelle berechnen',    color:T.blue   },
-  { id:'wortfluessigkeit',path:'/wortfluessigkeit',title:'Wortflüssigkeit',        icon:'🔤', desc:'Wörter erkennen – Anfangsbuchstabe finden', color:T.mauve  },
-  { id:'implikationen',   path:'/implikationen',   title:'Implikationen erkennen', icon:'🧠', desc:'Zwei Aussagen → logische Schlussfolgerung', color:T.yellow },
-  { id:'allergieausweise',path:'/allergieausweise',title:'Allergieausweise',       icon:'💳', desc:'Ausweise merken und Fragen beantworten',   color:T.green  },
-  { id:'figuren',         path:'/figuren',         title:'Figuren zusammensetzen', icon:'🔷', desc:'Einzelteile zu einer Figur zusammensetzen', color:T.teal  },
-  { id:'simulation',      path:'/simulation',      title:'Simulation',             icon:'🎓', desc:'Kompletter Testtag – alle 5 Kategorien',   color:T.orange },
+  { path:'/zahlenfolgen',    title:'Zahlenfolgen',           icon:'🔢', desc:'7 Zahlen → 8. und 9. Stelle berechnen',    color:T.blue   },
+  { path:'/wortfluessigkeit',title:'Wortflüssigkeit',        icon:'🔤', desc:'Wörter erkennen – Anfangsbuchstabe finden', color:T.mauve  },
+  { path:'/implikationen',   title:'Implikationen erkennen', icon:'🧠', desc:'Zwei Aussagen → logische Schlussfolgerung', color:T.yellow },
+  { path:'/allergieausweise',title:'Allergieausweise',       icon:'💳', desc:'Ausweise merken und Fragen beantworten',   color:T.green  },
+  { path:'/figuren',         title:'Figuren zusammensetzen', icon:'🔷', desc:'Einzelteile zu einer Figur zusammensetzen', color:T.teal  },
+  { path:'/simulation',      title:'Simulation',             icon:'🎓', desc:'Kompletter Testtag – alle 5 Kategorien',   color:T.orange },
 ]
+
+const goHome = () => navigate('/')
+
+function renderScreen(route) {
+  switch(route) {
+    case '/zahlenfolgen':    return <Zahlenfolgen    onBack={goHome}/>
+    case '/wortfluessigkeit':return <Wortfluessigkeit onBack={goHome}/>
+    case '/implikationen':   return <Implikationen   onBack={goHome}/>
+    case '/allergieausweise':return <Allergieausweise onBack={goHome}/>
+    case '/figuren':         return <Figuren         onBack={goHome}/>
+    case '/simulation':      return <Simulation      onBack={goHome}/>
+    default: return null
+  }
+}
 
 function TestTile({ test, focused, onClick }) {
   const ref = useRef(null)
@@ -37,28 +51,18 @@ function TestTile({ test, focused, onClick }) {
   )
 }
 
-const SCREENS = {
-  '/zahlenfolgen':    <Zahlenfolgen    onBack={() => navigate('/')} />,
-  '/wortfluessigkeit':<Wortfluessigkeit onBack={() => navigate('/')} />,
-  '/implikationen':   <Implikationen   onBack={() => navigate('/')} />,
-  '/allergieausweise':<Allergieausweise onBack={() => navigate('/')} />,
-  '/figuren':         <Figuren         onBack={() => navigate('/')} />,
-  '/simulation':      <Simulation      onBack={() => navigate('/')} />,
-}
-
 export default function App() {
   const route = useRoute()
   const [focused, setFocused] = useState(0)
 
-  // Keyboard nav on home screen
   useEffect(() => {
     if (route !== '/') return
     const cols = 2
     const h = e => {
-      if (e.key === 'ArrowRight') setFocused(f => Math.min(f+1, TESTS.length-1))
-      else if (e.key === 'ArrowLeft')  setFocused(f => Math.max(f-1, 0))
-      else if (e.key === 'ArrowDown')  setFocused(f => Math.min(f+cols, TESTS.length-1))
-      else if (e.key === 'ArrowUp')    setFocused(f => Math.max(f-cols, 0))
+      if (e.key === 'ArrowRight') { e.preventDefault(); setFocused(f => Math.min(f+1, TESTS.length-1)) }
+      else if (e.key === 'ArrowLeft')  { e.preventDefault(); setFocused(f => Math.max(f-1, 0)) }
+      else if (e.key === 'ArrowDown')  { e.preventDefault(); setFocused(f => Math.min(f+cols, TESTS.length-1)) }
+      else if (e.key === 'ArrowUp')    { e.preventDefault(); setFocused(f => Math.max(f-cols, 0)) }
       else if (e.key === 'Enter')      navigate(TESTS[focused].path)
       else if (e.key >= '1' && e.key <= '6') navigate(TESTS[parseInt(e.key)-1].path)
     }
@@ -66,10 +70,11 @@ export default function App() {
     return () => window.removeEventListener('keydown', h)
   }, [route, focused])
 
-  if (route !== '/' && SCREENS[route]) {
+  const screen = renderScreen(route)
+  if (screen) {
     return (
       <div style={{ minHeight:'100vh', background:T.bg, paddingBottom:60 }}>
-        {SCREENS[route]}
+        {screen}
       </div>
     )
   }
@@ -84,7 +89,7 @@ export default function App() {
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(340px, 1fr))', gap:16, marginBottom:48 }}>
           {TESTS.map((t, i) => (
-            <TestTile key={t.id} test={t} focused={focused===i}
+            <TestTile key={t.path} test={t} focused={focused===i}
               onClick={() => navigate(t.path)} />
           ))}
         </div>
