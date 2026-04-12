@@ -229,13 +229,17 @@ export function makeTask() {
   const family = isCircle ? CIRC_SHAPES : POLY_SHAPES
 
   if (injectNone) {
+    // Pieces from the OTHER family so none of the shown options match.
+    // Options: 3 shapes from the pieces' family (all wrong) + 1 placeholder + keine.
     const wrongFamily = isCircle ? POLY_SHAPES : CIRC_SHAPES
     const wrongShape = pick(wrongFamily)
     const pd = wrongShape.family==='polygon'
       ? genPolyPieces(wrongShape.sides)
       : genCircPieces(wrongShape.sweep)
-    const plOpts = shuffle([...PLACEHOLDER_SHAPES]).slice(0,4)
-    return { pieces: pd, opts: [...plOpts.map(s=>({shape:s})), {shape:null}], correctIdx:4, targetShape:null }
+    const realDistractors = shuffle(wrongFamily.filter(s => s.id !== wrongShape.id)).slice(0, 3)
+    const plOpt = pick(PLACEHOLDER_SHAPES)
+    const opts4 = shuffle([...realDistractors.map(s => ({shape:s})), {shape:plOpt}])
+    return { pieces: pd, opts: [...opts4, {shape:null}], correctIdx:4, targetShape:null }
   }
 
   const targetShape = pick(family)

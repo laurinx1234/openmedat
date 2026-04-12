@@ -228,6 +228,114 @@ export default function Simulation({onBack}){
 
   const[scores,setScores]=useState({})
 
+  // ── Central keyboard handler for all answer phases ────────────────────────
+  useEffect(() => {
+    const ANSWER_PHASES = ['figuren','zahlen','wort','allerg_q','impl']
+    if (!ANSWER_PHASES.includes(simPhase)) return
+
+    const h = e => {
+      const i = ['a','s','d','f','g'].indexOf(e.key.toLowerCase())
+      if (i < 0 || i > 4) return
+      e.preventDefault()
+
+      if (simPhase === 'figuren') {
+        setFigAnswers(prev => {
+          if (prev[figCurrent] !== null) return prev
+          const next = [...prev]; next[figCurrent] = i
+          // auto-advance
+          setTimeout(() => {
+            setFigCurrent(cur => {
+              for (let j=cur+1; j<figQuestions.length; j++) { if (next[j]===null) return j }
+              for (let j=0; j<cur; j++)                     { if (next[j]===null) return j }
+              return cur
+            })
+          }, 50)
+          return next
+        })
+      } else if (simPhase === 'zahlen') {
+        setZahlenAnswers(prev => {
+          if (prev[zahlenCurrent] !== null) return prev
+          const next = [...prev]; next[zahlenCurrent] = i
+          setTimeout(() => {
+            setZahlenCurrent(cur => {
+              for (let j=cur+1; j<zahlenQuestions.length; j++) { if (next[j]===null) return j }
+              for (let j=0; j<cur; j++)                         { if (next[j]===null) return j }
+              return cur
+            })
+          }, 50)
+          return next
+        })
+      } else if (simPhase === 'wort') {
+        setWortAnswers(prev => {
+          if (prev[wortCurrent] !== null) return prev
+          const next = [...prev]; next[wortCurrent] = i
+          setTimeout(() => {
+            setWortCurrent(cur => {
+              for (let j=cur+1; j<wortQuestions.length; j++) { if (next[j]===null) return j }
+              for (let j=0; j<cur; j++)                       { if (next[j]===null) return j }
+              return cur
+            })
+          }, 50)
+          return next
+        })
+      } else if (simPhase === 'allerg_q') {
+        setAllergAnswers(prev => {
+          if (prev[allergCurrent] !== null) return prev
+          const next = [...prev]; next[allergCurrent] = i
+          setTimeout(() => {
+            setAllergCurrent(cur => {
+              for (let j=cur+1; j<allergQuestions.length; j++) { if (next[j]===null) return j }
+              for (let j=0; j<cur; j++)                         { if (next[j]===null) return j }
+              return cur
+            })
+          }, 50)
+          return next
+        })
+      } else if (simPhase === 'impl') {
+        setImplAnswers(prev => {
+          if (prev[implCurrent] !== null) return prev
+          const next = [...prev]; next[implCurrent] = i
+          setTimeout(() => {
+            setImplCurrent(cur => {
+              for (let j=cur+1; j<implQuestions.length; j++) { if (next[j]===null) return j }
+              for (let j=0; j<cur; j++)                       { if (next[j]===null) return j }
+              return cur
+            })
+          }, 50)
+          return next
+        })
+      }
+    }
+
+    // Arrow key navigation between questions
+    const nav = e => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        if (simPhase==='figuren')  setFigCurrent(c => Math.min(c+1, figQuestions.length-1))
+        if (simPhase==='zahlen')   setZahlenCurrent(c => Math.min(c+1, zahlenQuestions.length-1))
+        if (simPhase==='wort')     setWortCurrent(c => Math.min(c+1, wortQuestions.length-1))
+        if (simPhase==='allerg_q') setAllergCurrent(c => Math.min(c+1, allergQuestions.length-1))
+        if (simPhase==='impl')     setImplCurrent(c => Math.min(c+1, implQuestions.length-1))
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (simPhase==='figuren')  setFigCurrent(c => Math.max(c-1, 0))
+        if (simPhase==='zahlen')   setZahlenCurrent(c => Math.max(c-1, 0))
+        if (simPhase==='wort')     setWortCurrent(c => Math.max(c-1, 0))
+        if (simPhase==='allerg_q') setAllergCurrent(c => Math.max(c-1, 0))
+        if (simPhase==='impl')     setImplCurrent(c => Math.max(c-1, 0))
+      }
+    }
+
+    window.addEventListener('keydown', h)
+    window.addEventListener('keydown', nav)
+    return () => {
+      window.removeEventListener('keydown', h)
+      window.removeEventListener('keydown', nav)
+    }
+  }, [simPhase, figCurrent, zahlenCurrent, wortCurrent, allergCurrent, implCurrent,
+      figQuestions, zahlenQuestions, wortQuestions, allergQuestions, implQuestions])
+
   const currentPhase=PHASES[phaseIdx]
 
   // Auto-end phase when timer runs out
