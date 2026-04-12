@@ -65,6 +65,7 @@ export default function App() {
         </div>
         <div style={{ textAlign:'center', color:T.muted, fontSize:13 }}>
           Tastatur: <span style={{ color:T.yellow }}>A · S · D · F · G</span> für die fünf Antwortoptionen
+          <div style={{ marginTop:8 }}>github.com/laurinx1234/openmedat</div>
         </div>
       </div>
     </div>
