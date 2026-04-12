@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { T } from '../theme.js'
 
 export function useTimer(seconds) {
@@ -122,6 +122,56 @@ export function SettingRow({ label, options, value, onChange }) {
       </div>
     </div>
   )
+}
+
+
+// ─── Keyboard navigation for settings screens ─────────────────────────────────
+// rows: 2D array of { action } objects. rows.length index = Start button.
+export function useSettingsKeyboard(rows, onStart, onBack) {
+  const [pos, setPos] = useState([0, 0])
+  const ref = useRef({ pos:[0,0], rows, onStart, onBack })
+  // Keep ref current on every render
+  ref.current.rows = rows
+  ref.current.onStart = onStart
+  ref.current.onBack = onBack
+  ref.current.pos = pos
+
+  useEffect(() => {
+    const h = e => {
+      const { pos:[r,c], rows, onStart, onBack } = ref.current
+      const maxRow = rows.length  // maxRow = Start button row index
+      let nr=r, nc=c, moved=false
+
+      if      (e.key==='ArrowRight' && r<maxRow) { nc=Math.min(c+1,rows[r].length-1); moved=true }
+      else if (e.key==='ArrowLeft'  && r<maxRow) { nc=Math.max(c-1,0);                moved=true }
+      else if (e.key==='ArrowDown') {
+        nr=Math.min(r+1,maxRow)
+        nc=nr<maxRow ? Math.min(c,rows[nr].length-1) : 0
+        moved=true
+      }
+      else if (e.key==='ArrowUp') {
+        nr=Math.max(r-1,0)
+        nc=nr<maxRow ? Math.min(c,rows[nr].length-1) : 0
+        moved=true
+      }
+      else if (e.key==='Enter'||e.key===' ') {
+        e.preventDefault()
+        if (r>=maxRow) onStart()
+        else rows[r][c]?.action()
+        return
+      }
+      else if (e.key==='Escape') { onBack(); return }
+
+      if (moved) { e.preventDefault(); setPos([nr,nc]) }
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [])  // stable: all latest values read from ref
+
+  return {
+    isFocused: (r, c) => pos[0]===r && pos[1]===c,
+    isStartFocused: pos[0] >= (ref.current.rows.length),
+  }
 }
 
 export const rnd = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min

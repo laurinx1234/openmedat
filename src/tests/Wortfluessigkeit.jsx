@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, useTimer, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
 import { UNIQUE_WORDS } from '../data/words.js'
 
 const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
@@ -54,6 +54,11 @@ export default function Wortfluessigkeit({onBack}){
   useEffect(()=>{if(!fbReady)return;const h=()=>nextQ();window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[fbReady,remaining,endless])
   useEffect(()=>{if(showFb)return;const h=e=>{const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[answer,showFb])
 
+  const skRows=[
+    [{action:()=>setCount(15)},{action:()=>setCount(0)}],
+    [{action:()=>setDisplayMode('gemischt')},{action:()=>setDisplayMode('getrennt')}],
+  ]
+  const{isFocused:skF,isStartFocused:skS}=useSettingsKeyboard(skRows,startGame,onBack)
   if(mode==='settings')return(
     <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
       <BackBtn onBack={onBack}/>
@@ -62,20 +67,21 @@ export default function Wortfluessigkeit({onBack}){
         <div style={{marginBottom:20}}>
           <div style={{color:T.muted,fontSize:13,marginBottom:10}}>Anzahl Aufgaben:</div>
           <div style={{display:'flex',gap:8}}>
-            {[{v:15,l:'15  (20 Min)'},{v:0,l:'∞  Endlosmodus'}].map(o=>(
-              <button key={o.v} onClick={()=>setCount(o.v)} style={{background:count===o.v?`${T.mauve}25`:T.surf2,border:`1px solid ${count===o.v?T.mauve:T.border}`,borderRadius:8,color:count===o.v?T.mauve:T.text,cursor:'pointer',padding:'8px 18px',fontSize:14}}>{o.l}</button>
+            {[{v:15,l:'15  (20 Min)'},{v:0,l:'∞  Endlosmodus'}].map((o,i)=>(
+              <button key={o.v} onClick={()=>setCount(o.v)} style={{background:count===o.v?`${T.mauve}25`:T.surf2,border:`1px solid ${count===o.v?T.mauve:T.border}`,borderRadius:8,color:count===o.v?T.mauve:T.text,cursor:'pointer',padding:'8px 18px',fontSize:14,boxShadow:skF(0,i)?`0 0 0 2px ${T.mauve}`:'none'}}>{o.l}</button>
             ))}
           </div>
         </div>
         <div style={{marginBottom:24}}>
           <div style={{color:T.muted,fontSize:13,marginBottom:10}}>Darstellungsmodus:</div>
           <div style={{display:'flex',gap:8}}>
-            {[{v:'gemischt',l:'Gemischt'},{v:'getrennt',l:'Vokale / Konsonanten'}].map(o=>(
-              <button key={o.v} onClick={()=>setDisplayMode(o.v)} style={{background:displayMode===o.v?`${T.mauve}25`:T.surf2,border:`1px solid ${displayMode===o.v?T.mauve:T.border}`,borderRadius:8,color:displayMode===o.v?T.mauve:T.text,cursor:'pointer',padding:'8px 18px',fontSize:14}}>{o.l}</button>
+            {[{v:'gemischt',l:'Gemischt'},{v:'getrennt',l:'Vokale / Konsonanten'}].map((o,i)=>(
+              <button key={o.v} onClick={()=>setDisplayMode(o.v)} style={{background:displayMode===o.v?`${T.mauve}25`:T.surf2,border:`1px solid ${displayMode===o.v?T.mauve:T.border}`,borderRadius:8,color:displayMode===o.v?T.mauve:T.text,cursor:'pointer',padding:'8px 18px',fontSize:14,boxShadow:skF(1,i)?`0 0 0 2px ${T.mauve}`:'none'}}>{o.l}</button>
             ))}
           </div>
         </div>
-        <button onClick={startGame} style={{background:T.mauve,border:'none',borderRadius:10,color:'#000',cursor:'pointer',padding:'14px 32px',fontSize:16,fontWeight:'bold'}}>Starten</button>
+        <button onClick={startGame} style={{background:T.mauve,border:'none',borderRadius:10,color:'#000',cursor:'pointer',padding:'14px 32px',fontSize:16,fontWeight:'bold',boxShadow:skS()?`0 0 0 3px ${T.mauve}88`:'none'}}>Starten</button>
+        <div style={{color:T.muted,fontSize:11,marginTop:12}}>← → Auswahl · ↑↓ Zeile · Enter bestätigen · Esc zurück</div>
       </Card>
     </div>
   )
