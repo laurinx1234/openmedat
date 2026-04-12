@@ -1,0 +1,16 @@
+export const T = {
+  bg:     '#0a0c14',
+  surf:   '#12162a',
+  surf2:  '#1c2040',
+  border: '#252a50',
+  text:   '#cdd6f4',
+  muted:  '#6c7aaa',
+  blue:   '#89b4fa',
+  green:  '#a6e3a1',
+  red:    '#f38ba8',
+  yellow: '#f9e2af',
+  mauve:  '#cba6f7',
+  teal:   '#94e2d5',
+  orange: '#fab387',
+  pink:   '#f5c2e7',
+}
