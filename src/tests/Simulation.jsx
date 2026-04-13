@@ -111,6 +111,10 @@ function QuestionScreen({phase,questions,answers,setAnswers,current,setCurrent,c
 
 // ─── Results ──────────────────────────────────────────────────────────────────
 function ResultsScreen({scores,onBack}){
+  useEffect(()=>{
+    const h=e=>{if(e.key==='Escape'||e.key==='Enter')onBack()}
+    window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)
+  },[onBack])
   const cats=[
     {k:'figuren',label:'Figuren zusammensetzen',color:T.teal, icon:'🔷'},
     {k:'zahlen', label:'Zahlenfolgen',           color:T.blue, icon:'🔢'},
@@ -307,6 +311,12 @@ export default function Simulation({onBack}){
       }
     }
 
+    // Escape → end current phase
+    const esc = e => {
+      if (e.key === 'Escape') endCurrentPhase()
+    }
+    window.addEventListener('keydown', esc)
+
     // Arrow key navigation between questions
     const nav = e => {
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
@@ -329,9 +339,11 @@ export default function Simulation({onBack}){
 
     window.addEventListener('keydown', h)
     window.addEventListener('keydown', nav)
+    window.addEventListener('keydown', esc)
     return () => {
       window.removeEventListener('keydown', h)
       window.removeEventListener('keydown', nav)
+      window.removeEventListener('keydown', esc)
     }
   }, [simPhase, figCurrent, zahlenCurrent, wortCurrent, allergCurrent, implCurrent,
       figQuestions, zahlenQuestions, wortQuestions, allergQuestions, implQuestions])

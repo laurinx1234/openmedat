@@ -303,14 +303,20 @@ export default function Figuren({ onBack }) {
 
   useEffect(() => {
     if (fbReady) {
-      const h = () => nextQ()
+      const h = e => {
+        if (e.key === 'Escape') { endless?setDone(true):setMode('settings'); return }
+        nextQ()
+      }
       window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h)
     }
     if (!showFb) {
-      const h = e => { const i=KEYS.indexOf(e.key.toLowerCase()); if(i>=0&&i<5) answer(i) }
+      const h = e => {
+        if (e.key === 'Escape') { endless?setDone(true):setMode('settings'); return }
+        const i=KEYS.indexOf(e.key.toLowerCase()); if(i>=0&&i<5) answer(i)
+      }
       window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h)
     }
-  }, [answer, showFb, fbReady])
+  }, [answer, showFb, fbReady, endless])
 
   const skRows=[
     [{action:()=>setCount(15)},{action:()=>setCount(0)}],

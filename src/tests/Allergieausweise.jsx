@@ -139,7 +139,7 @@ export default function Allergieausweise({onBack}){
     setTimeout(()=>{if(qIdx+1>=questions.length)setDone(true);else{setQIdx(x=>x+1);setSelected(null)}},1000)
   },[selected,done,qIdx,questions])
 
-  useEffect(()=>{const h=e=>{const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[answer])
+  useEffect(()=>{const h=e=>{if(e.key==='Escape'){setPhase('settings');return}const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[answer])
 
   const skGroupDefs=[
     [{v:2},{v:3},{v:4},{v:5},{v:6},{v:7},{v:8}].map((o,i)=>({action:()=>setSettings(s=>({...s,cardCount:o.v}))})),

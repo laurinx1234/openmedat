@@ -77,12 +77,20 @@ export function ResultScreen({ correct, total, onRetry, onBack }) {
   const pct = Math.round((correct / total) * 100)
   const col = pct >= 70 ? T.green : pct >= 50 ? T.yellow : T.red
   const msg = pct >= 85 ? 'Ausgezeichnet! 🏆' : pct >= 70 ? 'Sehr gut! 💪' : pct >= 50 ? 'Solide Basis 📚' : 'Weiter üben! 🔁'
+  useEffect(() => {
+    const h = e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRetry() }
+      else if (e.key === 'Escape') onBack()
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [onRetry, onBack])
   return (
     <div style={{ textAlign: 'center', padding: '48px 0' }}>
       <div style={{ fontSize: 72, fontWeight: 'bold', color: col, marginBottom: 8 }}>{pct}%</div>
       <div style={{ color: T.muted, fontSize: 16, marginBottom: 8 }}>{correct} von {total} richtig</div>
-      <div style={{ color: col, fontSize: 20, marginBottom: 40 }}>{msg}</div>
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+      <div style={{ color: col, fontSize: 20, marginBottom: 24 }}>{msg}</div>
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 16 }}>
         <button onClick={onRetry} style={{ background: T.surf2, border: `1px solid ${T.border}`, borderRadius: 8, color: T.text, cursor: 'pointer', padding: '12px 28px', fontSize: 15 }}>
           Nochmal
         </button>
@@ -90,6 +98,7 @@ export function ResultScreen({ correct, total, onRetry, onBack }) {
           Hauptmenü
         </button>
       </div>
+      <div style={{ color: T.muted, fontSize: 12 }}>Enter → Nochmal · Esc → Hauptmenü</div>
     </div>
   )
 }
