@@ -56,7 +56,7 @@ export default function Zahlenfolgen({onBack}){
     setRemaining(rem);setQuestion(makeTask())
   }
   useEffect(()=>{if(!fbReady)return;const h=()=>nextQ();window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[fbReady,remaining,endless])
-  useEffect(()=>{if(showFb)return;const h=e=>{const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[answer,showFb])
+  useEffect(()=>{if(showFb)return;const h=e=>{if(e.key==='Escape'){endless?setDone(true):setMode('settings');return}const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[answer,showFb])
 
   const skRows=[
     [{action:()=>setCount(10)},{action:()=>setCount(0)}],
