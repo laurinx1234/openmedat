@@ -10,7 +10,7 @@ import { genCardPool, fetchPhotos, makeQuestion, AusweisCard } from './Allergiea
 // ─── Simulation config ────────────────────────────────────────────────────────
 const PHASES = [
   { id:'figuren',   label:'Figuren zusammensetzen', color:T.teal,   n:15, secs:20*60, icon:'🔷' },
-  { id:'allerg_l',  label:'Allergieausweise merken', color:T.green,  n:0,  secs:10*60, icon:'💳' },
+  { id:'allerg_l',  label:'Allergieausweise merken', color:T.green,  n:0,  secs:8*60, icon:'💳' },
   { id:'zahlen',    label:'Zahlenfolgen',            color:T.blue,   n:10, secs:15*60, icon:'🔢' },
   { id:'wort',      label:'Wortflüssigkeit',         color:T.mauve,  n:15, secs:20*60, icon:'🔤' },
   { id:'allerg_q',  label:'Allergieausweise Abfrage',color:T.green,  n:25, secs:15*60, icon:'💳' },
@@ -391,6 +391,8 @@ export default function Simulation({onBack}){
       const photos=await fetchPhotos(8)
       photos.forEach((url,i)=>{if(i<pool.length)pool[i].photoUrl=url})
       setAllergCards(pool);setAllergShown(pool.slice(0,8))
+      // 8 min fixed for 8 cards (1 min per card)
+      resetTimer(8*60)
       setSimPhase('allerg_l')
     } else if(ph.id==='zahlen'){
       const qs=Array.from({length:10},()=>makeZahlen())
