@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { T } from './theme.js'
 import { navigate, useRoute } from './router.js'
+import { getSession, isQuizReady, minutesUntilQuiz } from './allergStore.js'
 import Zahlenfolgen from './tests/Zahlenfolgen.jsx'
 import Wortfluessigkeit from './tests/Wortfluessigkeit.jsx'
 import Implikationen from './tests/Implikationen.jsx'
@@ -29,6 +30,35 @@ function renderScreen(route) {
     case '/simulation':      return <Simulation      onBack={goHome}/>
     default: return null
   }
+}
+
+
+function QuizBadge() {
+  const [, forceRender] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => forceRender(n => n+1), 15000)
+    return () => clearInterval(id)
+  }, [])
+  const session = getSession()
+  if (!session) return null
+  const ready = isQuizReady()
+  const mins = minutesUntilQuiz()
+  return (
+    <div onClick={() => navigate('/allergieausweise')}
+      style={{ background: ready ? `${T.green}22` : `${T.surf}`, border: `1px solid ${ready ? T.green : T.border}`,
+        borderRadius: 12, padding: '14px 20px', marginBottom: 20, cursor: 'pointer',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div>
+        <div style={{ color: ready ? T.green : T.text, fontWeight: 'bold', marginBottom: 2 }}>
+          {ready ? '🔔 Allergieausweise Quiz bereit!' : '⏳ Allergieausweise Merkphase läuft'}
+        </div>
+        <div style={{ color: T.muted, fontSize: 13 }}>
+          {ready ? 'Klicken oder Enter um das Quiz zu starten.' : `Quiz in ca. ${mins} Minute${mins!==1?'n':''}`}
+        </div>
+      </div>
+      <span style={{ color: ready ? T.green : T.muted, fontSize: 20 }}>→</span>
+    </div>
+  )
 }
 
 function TestTile({ test, focused, onClick }) {
@@ -87,6 +117,7 @@ export default function App() {
           <div style={{ fontSize:46, fontWeight:'bold', color:T.text, marginBottom:8, letterSpacing:-2 }}>openMedAT</div>
           <div style={{ fontSize:16, color:T.muted }}>Kognitive Fähigkeiten und Fertigkeiten — 5 Testmodule + Simulation</div>
         </div>
+        <QuizBadge/>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(340px, 1fr))', gap:16, marginBottom:48 }}>
           {TESTS.map((t, i) => (
             <TestTile key={t.path} test={t} focused={focused===i}
