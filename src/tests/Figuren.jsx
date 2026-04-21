@@ -56,23 +56,26 @@ function arcPath(cx, cy, r, a0, a1) {
   return `M ${cx},${cy} L ${x0.toFixed(2)},${y0.toFixed(2)} A ${r},${r} 0 ${sw>Math.PI?1:0},1 ${x1.toFixed(2)},${y1.toFixed(2)} Z`
 }
 
-function tryCut(pieces, totalArea, nx, ny, d, minFrac=0.05) {
-  const next = []
-  for (const p of pieces) {
-    const left  = clip(p,  nx,  ny,  d)
-    const right = clip(p, -nx, -ny, -d)
-    if (left.length >= 3 && right.length >= 3) {
-      if (polyArea(left)  < totalArea * minFrac) return null
-      if (polyArea(right) < totalArea * minFrac) return null
-      next.push(left, right)
-    } else if (left.length >= 3)  { next.push(left)  }
-      else if (right.length >= 3) { next.push(right) }
-      else                         { next.push(p)     }
-  }
-  return next.length > pieces.length ? next : null
+// Cut only the targeted piece (creates T-junctions when new cuts stop at prior piece boundaries)
+function tryCutPiece(pieces, targetIdx, totalArea, nx, ny, d, minFrac=0.05) {
+  const p = pieces[targetIdx]
+  const left  = clip(p,  nx,  ny,  d)
+  const right = clip(p, -nx, -ny, -d)
+  if (left.length < 3 || right.length < 3) return null
+  if (polyArea(left)  < totalArea * minFrac) return null
+  if (polyArea(right) < totalArea * minFrac) return null
+  return [...pieces.slice(0,targetIdx), left, right, ...pieces.slice(targetIdx+1)]
 }
 
-function applyCut(pieces, totalArea, angle, offset) {
+function pickByArea(pieces) {
+  const areas = pieces.map(p => polyArea(p))
+  const tot = areas.reduce((s,a)=>s+a,0)
+  let r = Math.random() * tot
+  for (let i=0; i<areas.length; i++) { r -= areas[i]; if (r<=0) return i }
+  return areas.length-1
+}
+
+function applyCutToPiece(pieces, targetIdx, totalArea, angle, offset) {
   const cx=50, cy=50, r=44
   const nx=Math.sin(angle), ny=-Math.cos(angle)
   for (const frac of [1.0, 0.6, 0.35, 0.0]) {
@@ -80,7 +83,7 @@ function applyCut(pieces, totalArea, angle, offset) {
     const lx = cx + off*r*Math.cos(angle+Math.PI/2)
     const ly = cy + off*r*Math.sin(angle+Math.PI/2)
     const d = nx*lx+ny*ly
-    const result = tryCut(pieces, totalArea, nx, ny, d)
+    const result = tryCutPiece(pieces, targetIdx, totalArea, nx, ny, d)
     if (result) return result
   }
   return null
@@ -89,15 +92,10 @@ function applyCut(pieces, totalArea, angle, offset) {
 function genPolyPieces(sides) {
   const poly = regPoly(sides)
   const totalArea = polyArea(poly)
-  const numLines = rnd(4, 7)
-  const lines = Array.from({length: numLines}, (_, i) => ({
-    angle:  i*(Math.PI/numLines) + (Math.random()-0.5)*(Math.PI/numLines)*0.75,
-    offset: (Math.random()*1.2 - 0.6)
-  }))
   let pieces = [poly]
-  for (const {angle, offset} of lines) {
-    if (pieces.length >= 8) break
-    const result = applyCut(pieces, totalArea, angle, offset)
+  for (let cut = 0; cut < rnd(4,7); cut++) {
+    if (pieces.length >= 9) break
+    const result = applyCutToPiece(pieces, pickByArea(pieces), totalArea, Math.random()*Math.PI, Math.random()*1.2-0.6)
     if (result) pieces = result
   }
   const raw = pieces.filter(p => p.length >= 3)
@@ -111,15 +109,11 @@ function genCircPieces(sweep) {
     ? Array.from({length:64}, (_,i) => { const a=a0+2*Math.PI*i/64; return [cx+r*Math.cos(a),cy+r*Math.sin(a)] })
     : [...Array.from({length:48}, (_,i) => { const a=a0+sweep*i/47; return [cx+r*Math.cos(a),cy+r*Math.sin(a)] }), [cx,cy]]
   const totalArea = polyArea(arcPoly)
-  const numLines = sweep <= Math.PI*0.6 ? rnd(1,2) : rnd(2,4)
-  const lines = Array.from({length: numLines}, (_, i) => ({
-    angle:  i*(Math.PI/numLines) + (Math.random()-0.5)*(Math.PI/numLines)*0.7,
-    offset: (Math.random()*1.0 - 0.5)
-  }))
+  const numCuts = sweep <= Math.PI*0.6 ? rnd(1,2) : rnd(2,4)
   let pieces = [arcPoly]
-  for (const {angle, offset} of lines) {
+  for (let cut = 0; cut < numCuts; cut++) {
     if (pieces.length >= 6) break
-    const result = applyCut(pieces, totalArea, angle, offset)
+    const result = applyCutToPiece(pieces, pickByArea(pieces), totalArea, Math.random()*Math.PI, Math.random()*1.0-0.5)
     if (result) pieces = result
   }
   const raw = pieces.filter(p => p.length >= 3)
@@ -152,9 +146,7 @@ const WINKEL_DATA = [
   {sides:8, label:'Achteck',   deg:45},
 ]
 
-// ─── Piece colours (AssembledView only) ────────────────────────────────────────
 const PC = ['#89b4fa','#cba6f7','#94e2d5','#a6e3a1','#f9e2af','#fab387','#f38ba8','#f5c2e7','#89dceb']
-const PIECE_FILL = '#6b7280'
 
 // ─── Assembled view ────────────────────────────────────────────────────────────
 function AssembledView({ task, size=200 }) {
@@ -185,7 +177,6 @@ function AnswerSVG({ shape, size=70 }) {
     if (shape.id==='ph_tri')  return <svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><polygon points={`${cx},${s*.1} ${s*.92},${s*.9} ${s*.08},${s*.9}`} fill={fill} stroke={stroke} strokeWidth={sw}/></svg>
     if (shape.id==='ph_sq')   return <svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><rect x={s*.1} y={s*.1} width={s*.8} height={s*.8} fill={fill} stroke={stroke} strokeWidth={sw}/></svg>
     if (shape.id==='ph_rect') return <svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><rect x={s*.06} y={s*.22} width={s*.88} height={s*.55} fill={fill} stroke={stroke} strokeWidth={sw}/></svg>
-    // ph_trap = Trapez
     return <svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><polygon points={`${s*.28},${s*.25} ${s*.72},${s*.25} ${s*.9},${s*.78} ${s*.1},${s*.78}`} fill={fill} stroke={stroke} strokeWidth={sw}/></svg>
   }
   if (shape.id==='c4') return <svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><circle cx={cx} cy={cy} r={r} fill={fill} stroke={stroke} strokeWidth={sw}/></svg>
@@ -197,34 +188,29 @@ function AnswerSVG({ shape, size=70 }) {
   return <svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><path d={ptsToPath(pts)} fill={fill} stroke={stroke} strokeWidth={sw} strokeLinejoin="round"/></svg>
 }
 
-// ─── Puzzle piece tile (uniform gray, no colored box) ──────────────────────────
-function PieceTile({ data, rotation }) {
+// ─── Puzzle piece tile (colorful) ─────────────────────────────────────────────
+function PieceTile({ data, rotation, color }) {
   return (
     <svg viewBox="0 0 100 100" width="90" height="90">
       <g transform={`rotate(${rotation},50,50)`}>
-        <path d={ptsToPath(data)} fill={PIECE_FILL} stroke={PIECE_FILL} strokeWidth="0.5" strokeLinejoin="round"/>
+        <path d={ptsToPath(data)} fill={`${color}55`} stroke={color} strokeWidth="1.5" strokeLinejoin="round"/>
       </g>
     </svg>
   )
 }
 
-// ─── Winkel display ────────────────────────────────────────────────────────────
+// ─── Winkel display: two rays from vertex, no arc, no degree label ─────────────
 function WinkelDisplay({ deg, size=200 }) {
   const rad = deg * Math.PI / 180
-  const cx = size/2, cy = size/2, r = size*0.42
-  const x0 = cx + r, y0 = cy
-  const x1 = cx + r * Math.cos(rad), y1 = cy + r * Math.sin(rad)
-  const lg = deg > 180 ? 1 : 0
-  const lx = cx + r*0.58*Math.cos(rad/2)
-  const ly = cy + r*0.58*Math.sin(rad/2)
+  const cx = size/2, cy = size*0.72
+  const len = size * 0.44
+  const halfRad = rad / 2
+  const x0 = cx + len * Math.sin(halfRad), y0 = cy - len * Math.cos(halfRad)
+  const x1 = cx - len * Math.sin(halfRad), y1 = cy - len * Math.cos(halfRad)
   return (
     <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
-      <path d={`M ${cx},${cy} L ${x0},${y0} A ${r},${r} 0 ${lg},1 ${x1.toFixed(2)},${y1.toFixed(2)} Z`}
-        fill={`${T.teal}44`} stroke={T.teal} strokeWidth="2.5" strokeLinejoin="round"/>
-      <text x={lx.toFixed(1)} y={ly.toFixed(1)} textAnchor="middle" dominantBaseline="middle"
-        fill={T.yellow} fontSize={size*0.1} fontWeight="bold">
-        {Number.isInteger(deg) ? `${deg}°` : `${deg.toFixed(1)}°`}
-      </text>
+      <line x1={cx} y1={cy} x2={x0.toFixed(1)} y2={y0.toFixed(1)} stroke={T.teal} strokeWidth="3" strokeLinecap="round"/>
+      <line x1={cx} y1={cy} x2={x1.toFixed(1)} y2={y1.toFixed(1)} stroke={T.teal} strokeWidth="3" strokeLinecap="round"/>
     </svg>
   )
 }
@@ -246,7 +232,13 @@ export function makeTask() {
     return { pieces: pd, opts: [...opts4, {shape:null}], correctIdx: 4, targetShape }
   }
 
-  const opts4 = shuffle([...others.map(s => ({shape:s})), {shape:targetShape}])
+  // Sometimes inject a placeholder into one wrong-option slot (so placeholders don't always signal "pick E")
+  let wrongOpts = others.map(s => ({shape:s}))
+  if (Math.random() < 0.30) {
+    const phIdx = Math.floor(Math.random() * wrongOpts.length)
+    wrongOpts[phIdx] = {shape: pick(PLACEHOLDER_SHAPES)}
+  }
+  const opts4 = shuffle([...wrongOpts, {shape:targetShape}])
   const opts = [...opts4, {shape:null}]
   const ci = opts.findIndex(o => o.shape && o.shape.id === targetShape.id)
   return { pieces: pd, opts, correctIdx: ci, targetShape }
@@ -341,7 +333,6 @@ export default function Figuren({ onBack }) {
   ]
   const{isFocused:skF,isStartFocused:skS}=useSettingsKeyboard(skRows,startGame,onBack,mode==='settings')
 
-  // ── Settings ──
   if (mode === 'settings') return (
     <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
       <BackBtn onBack={onBack}/>
@@ -378,23 +369,13 @@ export default function Figuren({ onBack }) {
 
   const q = question; if (!q || !rotations.length) return null
   const getState = i => selected===null?'idle':i===q.correctIdx?'correct':i===selected?'wrong':'idle'
-
-  const optBtn = (o, i) => (
-    <button key={i} onClick={() => answer(i)} style={{
-      display:'flex',alignItems:'center',gap:14,width:'100%',
-      background:selected===null?T.surf2:i===q.correctIdx?`${T.green}22`:i===selected?`${T.red}22`:T.surf2,
-      border:`1px solid ${selected===null?T.border:i===q.correctIdx?T.green:i===selected?T.red:T.border}`,
-      borderRadius:10,color:T.text,cursor:selected===null?'pointer':'default',
-      padding:'10px 16px',fontSize:14,marginBottom:8,transition:'all 0.15s'
-    }}>
-      <span style={{color:T.yellow,fontWeight:'bold',minWidth:22}}>{OPTS[i]}</span>
-      {o
-        ? <><AnswerSVG shape={'sides' in o ? (POLY_SHAPES.find(s=>s.sides===o.sides)||POLY_SHAPES[0]) : o.shape} size={56}/><span>{'label' in o ? o.label : o.shape?.label}</span></>
-        : <span style={{color:T.muted}}>Keine Antwort ist richtig.</span>}
-      {selected!==null && i===q.correctIdx && <span style={{color:T.green,marginLeft:'auto'}}>✓</span>}
-      {selected!==null && i===selected && i!==q.correctIdx && <span style={{color:T.red,marginLeft:'auto'}}>✗</span>}
-    </button>
-  )
+  const btnStyle = i => ({
+    display:'flex',alignItems:'center',gap:14,width:'100%',
+    background:selected===null?T.surf2:i===q.correctIdx?`${T.green}22`:i===selected?`${T.red}22`:T.surf2,
+    border:`1px solid ${selected===null?T.border:i===q.correctIdx?T.green:i===selected?T.red:T.border}`,
+    borderRadius:10,color:T.text,cursor:selected===null?'pointer':'default',
+    padding:'10px 16px',fontSize:14,marginBottom:8,transition:'all 0.15s'
+  })
 
   // ── Winkel mode ──
   if (quizType === 'winkel') return (
@@ -414,7 +395,14 @@ export default function Figuren({ onBack }) {
         </div>
       </Card>
       <Card>
-        {q.opts.map((o, i) => optBtn(o, i))}
+        {q.opts.map((o, i) => (
+          <button key={i} onClick={() => answer(i)} style={btnStyle(i)}>
+            <span style={{color:T.yellow,fontWeight:'bold',minWidth:22}}>{OPTS[i]}</span>
+            {o ? <span>{o.label}</span> : <span style={{color:T.muted}}>Keine Antwort ist richtig.</span>}
+            {selected!==null && i===q.correctIdx && <span style={{color:T.green,marginLeft:'auto'}}>✓</span>}
+            {selected!==null && i===selected && i!==q.correctIdx && <span style={{color:T.red,marginLeft:'auto'}}>✗</span>}
+          </button>
+        ))}
         {!showFb && <KeyHint/>}
         {showFb && (
           <div style={{marginTop:16,background:T.surf2,borderRadius:12,padding:'16px 20px'}}>
@@ -445,19 +433,13 @@ export default function Figuren({ onBack }) {
         <div style={{color:T.muted,fontSize:13,marginBottom:16}}>Welche Figur ergibt sich aus diesen Teilen?</div>
         <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
           {q.pieces.normalized.map((p, i) => (
-            <PieceTile key={i} data={p} rotation={rotations[i]||0}/>
+            <PieceTile key={i} data={p} rotation={rotations[i]||0} color={PC[i%9]}/>
           ))}
         </div>
       </Card>
       <Card>
         {q.opts.map((o, i) => (
-          <button key={i} onClick={() => answer(i)} style={{
-            display:'flex',alignItems:'center',gap:14,width:'100%',
-            background:selected===null?T.surf2:i===q.correctIdx?`${T.green}22`:i===selected?`${T.red}22`:T.surf2,
-            border:`1px solid ${selected===null?T.border:i===q.correctIdx?T.green:i===selected?T.red:T.border}`,
-            borderRadius:10,color:T.text,cursor:selected===null?'pointer':'default',
-            padding:'10px 16px',fontSize:14,marginBottom:8,transition:'all 0.15s'
-          }}>
+          <button key={i} onClick={() => answer(i)} style={btnStyle(i)}>
             <span style={{color:T.yellow,fontWeight:'bold',minWidth:22}}>{OPTS[i]}</span>
             {o.shape ? (<><AnswerSVG shape={o.shape} size={62}/><span>{o.shape.label}</span></>) : <span style={{color:T.muted}}>Keine Antwort ist richtig.</span>}
             {selected!==null && i===q.correctIdx && <span style={{color:T.green,marginLeft:'auto'}}>✓</span>}
