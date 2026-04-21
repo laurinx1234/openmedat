@@ -19,9 +19,9 @@ const VALID_MODI=[
   {name:'Datisi',    p1:(s,m,c)=>`Alle ${m} sind ${c}.`,          p2:(s,m,c)=>`Einige ${m} sind ${s}.`,             concl:'einige',       w:3},
   {name:'Bocardo',   p1:(s,m,c)=>`Einige ${m} sind keine ${c}.`,  p2:(s,m,c)=>`Alle ${m} sind ${s}.`,               concl:'einige_nicht', w:3},
   {name:'Ferison',   p1:(s,m,c)=>`Alle ${m} sind keine ${c}.`,    p2:(s,m,c)=>`Einige ${m} sind ${s}.`,             concl:'einige_nicht', w:3},
-  {name:'Bramantip', p1:(s,m,c)=>`Alle ${c} sind ${m}.`,          p2:(s,m,c)=>`Alle ${m} sind ${s}.`,               concl:'einige',       w:3},
-  {name:'Camenes',   p1:(s,m,c)=>`Alle ${c} sind ${m}.`,          p2:(s,m,c)=>`Alle ${m} sind keine ${s}.`,         concl:'kein',         w:3},
-  {name:'Dimaris',   p1:(s,m,c)=>`Einige ${c} sind ${m}.`,        p2:(s,m,c)=>`Alle ${m} sind ${s}.`,               concl:'einige',       w:3},
+  {name:'Bamali',    p1:(s,m,c)=>`Alle ${c} sind ${m}.`,          p2:(s,m,c)=>`Alle ${m} sind ${s}.`,               concl:'einige',       w:3},
+  {name:'Calemes',   p1:(s,m,c)=>`Alle ${c} sind ${m}.`,          p2:(s,m,c)=>`Alle ${m} sind keine ${s}.`,         concl:'kein',         w:3},
+  {name:'Dimatis',   p1:(s,m,c)=>`Einige ${c} sind ${m}.`,        p2:(s,m,c)=>`Alle ${m} sind ${s}.`,               concl:'einige',       w:3},
   {name:'Fesapo',    p1:(s,m,c)=>`Alle ${c} sind keine ${m}.`,    p2:(s,m,c)=>`Alle ${m} sind ${s}.`,               concl:'einige_nicht', w:3},
   {name:'Fresison',  p1:(s,m,c)=>`Alle ${c} sind keine ${m}.`,    p2:(s,m,c)=>`Einige ${m} sind ${s}.`,             concl:'einige_nicht', w:3},
 ]

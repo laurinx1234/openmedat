@@ -81,31 +81,94 @@ export function AusweisCard({card}){
 }
 
 const Q_TYPES=[
-  {label:(c)=>`Was ist die Ausweisnummer von ${c.name}?`,correct:(c)=>c.ausweisnummer,pool:(cs)=>cs.map(c=>c.ausweisnummer),av:false},
-  {label:(c)=>`Welche Blutgruppe hat ${c.name}?`,correct:(c)=>c.blutgruppe,pool:()=>BLUTGRUPPEN,av:false},
-  {label:(c)=>`Welche Allergien hat ${c.name}?`,correct:(c)=>c.allergien,pool:(cs)=>cs.map(c=>c.allergien),av:false},
+  // Name → Attribut
+  {label:(c)=>`Wie lautet die Ausweisnummer von ${c.name}?`,correct:(c)=>c.ausweisnummer,pool:(cs)=>cs.map(c=>c.ausweisnummer),av:false},
+  {label:(c)=>`Welche Blutgruppe hat ${c.name}?`,correct:(c)=>c.blutgruppe,pool:(cs)=>cs.map(c=>c.blutgruppe),av:false},
+  {label:(c)=>`Welche Allergie/n hat ${c.name}?`,correct:(c)=>c.allergien,pool:(cs)=>cs.map(c=>c.allergien),av:false},
   {label:(c)=>`Wann hat ${c.name} Geburtstag?`,correct:(c)=>c.geburtstag,pool:(cs)=>cs.map(c=>c.geburtstag),av:false},
-  {label:(c)=>`Aus welchem Land stammt der Ausweis von ${c.name}?`,correct:(c)=>c.land,pool:()=>LAENDER,av:false},
-  {label:(c)=>`Nimmt ${c.name} Medikamente ein?`,correct:(c)=>c.medikamente,pool:()=>['Ja','Nein'],av:false},
-  {label:(c)=>`Wie lautet der Name zu Ausweis-Nr. ${c.ausweisnummer}?`,correct:(c)=>c.name,pool:(cs)=>cs.map(c=>c.name),av:false},
-  {label:()=>`Welche Allergien hat diese Person?`,correct:(c)=>c.allergien,pool:(cs)=>cs.map(c=>c.allergien),av:true},
-  {label:()=>`Welche Blutgruppe hat diese Person?`,correct:(c)=>c.blutgruppe,pool:()=>BLUTGRUPPEN,av:true},
+  {label:(c)=>`Aus welchem Land stammt der Ausweis von ${c.name}?`,correct:(c)=>c.land,pool:(cs)=>cs.map(c=>c.land),av:false},
+  {label:(c)=>`Welche Beschreibung passt am besten zu ${c.name}?`,correct:(c)=>`Blutgruppe: ${c.blutgruppe}, Medikamente: ${c.medikamente}`,pool:(cs)=>cs.map(c=>`Blutgruppe: ${c.blutgruppe}, Medikamente: ${c.medikamente}`),av:false},
+  // Ausweis-Nr. → Attribut
+  {label:(c)=>`Wie heißt die Person mit der Ausweisnummer ${c.ausweisnummer}?`,correct:(c)=>c.name,pool:(cs)=>cs.map(c=>c.name),av:false},
+  {label:(c)=>`In welchem Land wurde Ausweis-Nr. ${c.ausweisnummer} ausgestellt?`,correct:(c)=>c.land,pool:(cs)=>cs.map(c=>c.land),av:false},
+  {label:(c)=>`Welche Blutgruppe hat die Person mit Ausweis-Nr. ${c.ausweisnummer}?`,correct:(c)=>c.blutgruppe,pool:(cs)=>cs.map(c=>c.blutgruppe),av:false},
+  {label:(c)=>`Welche Allergie/n hat die Person mit Ausweis-Nr. ${c.ausweisnummer}?`,correct:(c)=>c.allergien,pool:(cs)=>cs.map(c=>c.allergien),av:false},
+  {label:(c)=>`Welche Beschreibung passt am besten zur Person mit Ausweis-Nr. ${c.ausweisnummer}?`,correct:(c)=>`Blutgruppe: ${c.blutgruppe}, Medikamente: ${c.medikamente}`,pool:(cs)=>cs.map(c=>`Blutgruppe: ${c.blutgruppe}, Medikamente: ${c.medikamente}`),av:false},
+  // Geburtstag → Attribut
+  {label:(c)=>`Wie heißt die Person, die am ${c.geburtstag} Geburtstag feiert?`,correct:(c)=>c.name,pool:(cs)=>cs.map(c=>c.name),av:false},
+  {label:(c)=>`Welche Ausweisnummer hat die Person, die am ${c.geburtstag} Geburtstag feiert?`,correct:(c)=>c.ausweisnummer,pool:(cs)=>cs.map(c=>c.ausweisnummer),av:false},
+  // Allergie → Attribut
+  {label:(c)=>`Wie heißt die Person mit der ${c.allergien} Allergie?`,correct:(c)=>c.name,pool:(cs)=>cs.map(c=>c.name),av:false},
+  {label:(c)=>`Welche Ausweisnummer hat die Person mit der ${c.allergien} Allergie?`,correct:(c)=>c.ausweisnummer,pool:(cs)=>cs.map(c=>c.ausweisnummer),av:false},
+  // Land → Attribut
+  {label:(c)=>`Wie heißt die Person, deren Ausweis aus ${c.land} stammt?`,correct:(c)=>c.name,pool:(cs)=>cs.map(c=>c.name),av:false},
+  {label:(c)=>`Welche Ausweisnummer hat die Person, deren Ausweis aus ${c.land} stammt?`,correct:(c)=>c.ausweisnummer,pool:(cs)=>cs.map(c=>c.ausweisnummer),av:false},
+  // Stelle der Ausweisnummer (nur wenn eindeutig)
+  {label:(c)=>`Wie heißt die Person mit der Zahl ${c.ausweisnummer[0]} an erster Stelle der Ausweisnummer?`,correct:(c)=>c.name,pool:(cs)=>cs.map(c=>c.name),av:false,check:(c,sh)=>sh.filter(s=>s.ausweisnummer[0]===c.ausweisnummer[0]).length===1},
+  {label:(c)=>`Wie heißt die Person mit der Zahl ${c.ausweisnummer[4]} an letzter Stelle der Ausweisnummer?`,correct:(c)=>c.name,pool:(cs)=>cs.map(c=>c.name),av:false,check:(c,sh)=>sh.filter(s=>s.ausweisnummer[4]===c.ausweisnummer[4]).length===1},
+  // Foto-Fragen (av:true — kein Name in Frage, kein Name in Anzeige)
+  {label:()=>`Welche Allergie/n hat diese Person?`,correct:(c)=>c.allergien,pool:(cs)=>cs.map(c=>c.allergien),av:true},
+  {label:()=>`Welche Blutgruppe hat diese Person?`,correct:(c)=>c.blutgruppe,pool:(cs)=>cs.map(c=>c.blutgruppe),av:true},
   {label:()=>`Wie heißt diese Person?`,correct:(c)=>c.name,pool:(cs)=>cs.map(c=>c.name),av:true},
-  {label:()=>`Aus welchem Land stammt der Ausweis dieser Person?`,correct:(c)=>c.land,pool:()=>LAENDER,av:true},
+  {label:()=>`Aus welchem Land stammt der Ausweis dieser Person?`,correct:(c)=>c.land,pool:(cs)=>cs.map(c=>c.land),av:true},
   {label:()=>`Wann hat diese Person Geburtstag?`,correct:(c)=>c.geburtstag,pool:(cs)=>cs.map(c=>c.geburtstag),av:true},
-  {label:()=>`Nimmt diese Person Medikamente ein?`,correct:(c)=>c.medikamente,pool:()=>['Ja','Nein'],av:true},
+  {label:()=>`Wie lautet die Ausweisnummer dieser Person?`,correct:(c)=>c.ausweisnummer,pool:(cs)=>cs.map(c=>c.ausweisnummer),av:true},
+  {label:()=>`Welche Beschreibung passt am besten zu dieser Person?`,correct:(c)=>`Blutgruppe: ${c.blutgruppe}, Medikamente: ${c.medikamente}`,pool:(cs)=>cs.map(c=>`Blutgruppe: ${c.blutgruppe}, Medikamente: ${c.medikamente}`),av:true},
 ]
 
-export function makeQuestion(shown,all){
-  const card=pick(shown);const qt=pick(Q_TYPES)
-  const correct=qt.correct(card)
-  const pool=[...new Set(qt.pool(all))].filter(v=>v!==correct)
-  const wrongs=shuffle(pool).slice(0,3).concat(Array(3).fill('–')).slice(0,3)
-  const injectNone=Math.random()<0.05
+function tryMultiQuestion(shown){
+  const byBG={}
+  for(const c of shown)(byBG[c.blutgruppe]=byBG[c.blutgruppe]||[]).push(c)
+  const groups=Object.entries(byBG).filter(([,cs])=>cs.length>=2)
+  if(!groups.length)return null
+  const[bg,matchCards]=pick(groups)
+  const useNrs=Math.random()<0.5
+  const question=useNrs?`Welche Ausweisnummern haben Personen mit der Blutgruppe ${bg}?`:`Wer hat die Blutgruppe ${bg}?`
+  const toVal=c=>useNrs?c.ausweisnummer:c.name
+  const correct=matchCards.map(toVal).sort().join(', ')
+  const allVals=shown.map(toVal)
+  const wrongs=new Set()
+  for(let i=0;i<100&&wrongs.size<4;i++){
+    const sz=rnd(1,Math.min(shown.length,3))
+    const w=shuffle([...allVals]).slice(0,sz).sort().join(', ')
+    if(w!==correct)wrongs.add(w)
+  }
+  if(wrongs.size<3)return null
+  const noneCorrect=Math.random()<0.15
   let opts,ci
-  if(injectNone){opts=[...shuffle(pool).slice(0,4),'keine'];ci=4}
-  else{opts=[...shuffle([correct,...wrongs]),'keine'];ci=opts.indexOf(correct)}
-  return{question:qt.label(card),opts,correctIdx:ci,card,showAvatar:qt.av}
+  if(noneCorrect){
+    const ws=[...wrongs].slice(0,4);if(ws.length<4)return null
+    opts=[...ws,'keine'];ci=4
+  }else{
+    const ws=[...wrongs].slice(0,3)
+    const sh=shuffle([correct,...ws]);opts=[...sh,'keine'];ci=sh.indexOf(correct)
+  }
+  return{question,opts,correctIdx:ci,card:pick(matchCards),showAvatar:false}
+}
+
+export function makeQuestion(shown,all){
+  if(Math.random()<0.25){const mq=tryMultiQuestion(shown);if(mq)return mq}
+  for(let _=0;_<40;_++){
+    const card=pick(shown);const qt=pick(Q_TYPES)
+    if(qt.check&&!qt.check(card,shown))continue
+    const correct=qt.correct(card)
+    const pool=[...new Set(qt.pool(shown))].filter(v=>v!==correct)
+    if(pool.length<3)continue
+    const noneCorrect=Math.random()<0.15
+    let opts,ci
+    if(noneCorrect){
+      const ws=shuffle([...pool]).slice(0,4);if(ws.length<4)continue
+      opts=[...ws,'keine'];ci=4
+    }else{
+      const ws=shuffle([...pool]).slice(0,3)
+      const sh=shuffle([correct,...ws]);opts=[...sh,'keine'];ci=sh.indexOf(correct)
+    }
+    return{question:qt.label(card),opts,correctIdx:ci,card,showAvatar:qt.av}
+  }
+  const card=pick(shown);const correct=card.blutgruppe
+  const ws=shuffle(BLUTGRUPPEN.filter(v=>v!==correct)).slice(0,3)
+  const sh=shuffle([correct,...ws])
+  return{question:`Welche Blutgruppe hat ${card.name}?`,opts:[...sh,'keine'],correctIdx:sh.indexOf(correct),card,showAvatar:false}
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -331,11 +394,10 @@ export default function Allergieausweise({onBack}){
       <ProgressBar current={qIdx+1} total={questions.length} color={T.green}/>
       <Card style={{marginBottom:16}}>
         {q.showAvatar&&<div style={{display:'flex',justifyContent:'center',marginBottom:16}}><div style={{background:T.surf2,borderRadius:16,padding:8,overflow:'hidden',width:116,height:116,display:'flex',alignItems:'center',justifyContent:'center'}}><Avatar card={q.card} size={100}/></div></div>}
-        <div style={{fontSize:17,color:T.text,marginBottom:q.showAvatar?0:8}}>{q.question}</div>
-        {!q.showAvatar&&<div style={{display:'flex',gap:10,marginTop:10}}><div style={{background:T.surf2,borderRadius:8,padding:4,overflow:'hidden',width:52,height:52,display:'flex',alignItems:'center',justifyContent:'center'}}><Avatar card={q.card} size={48}/></div><div style={{color:T.muted,fontSize:13,alignSelf:'center'}}>Person: <span style={{color:T.text}}>{q.card.name}</span></div></div>}
+        <div style={{fontSize:17,color:T.text}}>{q.question}</div>
       </Card>
       <Card>
-        {q.opts.map((o,i)=>(<OptionBtn key={i} label={OPTS[i]} state={getState(i)} onClick={()=>answer(i)} text={o==='keine'?'Keine Option ist richtig.':o}/>))}
+        {q.opts.map((o,i)=>(<OptionBtn key={i} label={OPTS[i]} state={getState(i)} onClick={()=>answer(i)} text={o==='keine'?'Keine Antwort ist richtig.':o}/>))}
         <KeyHint/>
       </Card>
     </div>

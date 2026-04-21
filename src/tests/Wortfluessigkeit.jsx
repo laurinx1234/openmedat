@@ -22,6 +22,23 @@ export function makeTask(){
 
 function ScoreBar({score,total,color}){const pct=total>0?Math.round(score/total*100):0;return<span style={{color,fontSize:14}}>{score}/{total} <span style={{color:T.muted}}>({pct}%)</span></span>}
 
+function Buchstabenwolke({letters}){
+  const n=letters.length
+  return(
+    <div style={{position:'relative',height:190,background:T.surf2,borderRadius:12,overflow:'hidden',userSelect:'none'}}>
+      {letters.map((l,i)=>{
+        const phi=i*2.399963  // goldener Winkel ≈ 137.5°
+        const r=14+(i+0.5)/n*38
+        const x=Math.max(6,Math.min(94, 50+r*Math.cos(phi)))
+        const y=Math.max(8,Math.min(92, 50+r*0.55*Math.sin(phi)))
+        const fs=[28,22,26,20,24][i%5]
+        const col=[T.yellow,T.text,T.mauve,T.yellow,T.text][i%5]
+        return<div key={i} style={{position:'absolute',left:`${x}%`,top:`${y}%`,transform:'translate(-50%,-50%)',fontSize:fs,fontWeight:'bold',color:col,lineHeight:1}}>{l}</div>
+      })}
+    </div>
+  )
+}
+
 export default function Wortfluessigkeit({onBack}){
   const[mode,setMode]=useState('settings')
   const[count,setCount]=useState(15)
@@ -56,7 +73,7 @@ export default function Wortfluessigkeit({onBack}){
 
   const skRows=[
     [{action:()=>setCount(15)},{action:()=>setCount(0)}],
-    [{action:()=>setDisplayMode('gemischt')},{action:()=>setDisplayMode('getrennt')}],
+    [{action:()=>setDisplayMode('gemischt')},{action:()=>setDisplayMode('getrennt')},{action:()=>setDisplayMode('wolke')}],
   ]
   const{isFocused:skF,isStartFocused:skS}=useSettingsKeyboard(skRows,startGame,onBack,mode==='settings')
   if(mode==='settings')return(
@@ -74,8 +91,8 @@ export default function Wortfluessigkeit({onBack}){
         </div>
         <div style={{marginBottom:24}}>
           <div style={{color:T.muted,fontSize:13,marginBottom:10}}>Darstellungsmodus:</div>
-          <div style={{display:'flex',gap:8}}>
-            {[{v:'gemischt',l:'Gemischt'},{v:'getrennt',l:'Vokale / Konsonanten'}].map((o,i)=>(
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {[{v:'gemischt',l:'Gemischt'},{v:'getrennt',l:'Vokale / Konsonanten'},{v:'wolke',l:'Buchstabenwolke'}].map((o,i)=>(
               <button key={o.v} onClick={()=>setDisplayMode(o.v)} style={{background:displayMode===o.v?`${T.mauve}25`:T.surf2,border:`1px solid ${displayMode===o.v?T.mauve:T.border}`,borderRadius:8,color:displayMode===o.v?T.mauve:T.text,cursor:'pointer',padding:'8px 18px',fontSize:14,boxShadow:skF(1,i)?`0 0 0 2px ${T.mauve}`:'none'}}>{o.l}</button>
             ))}
           </div>
@@ -104,19 +121,18 @@ export default function Wortfluessigkeit({onBack}){
       {!endless&&<ProgressBar current={count-remaining+1} total={count} color={T.mauve}/>}
       <Card style={{marginBottom:16}}>
         <div style={{color:T.muted,fontSize:13,marginBottom:16}}>Was ist der Anfangsbuchstabe des Wortes?</div>
-        {displayMode==='gemischt'
-          ?<div style={{letterSpacing:10,fontSize:32,fontWeight:'bold',color:T.yellow,textAlign:'center',padding:'20px 0',background:T.surf2,borderRadius:10}}>{q.display.join('  ')}</div>
-          :<div style={{display:'flex',gap:16}}>
-            <div style={{flex:1,background:T.surf2,borderRadius:10,padding:'16px',textAlign:'center'}}>
-              <div style={{color:T.muted,fontSize:11,letterSpacing:2,marginBottom:8}}>VOKALE</div>
-              <div style={{fontSize:24,fontWeight:'bold',color:T.teal,letterSpacing:8}}>{vok.length?vok.join('  '):'–'}</div>
-            </div>
-            <div style={{flex:1,background:T.surf2,borderRadius:10,padding:'16px',textAlign:'center'}}>
-              <div style={{color:T.muted,fontSize:11,letterSpacing:2,marginBottom:8}}>KONSONANTEN</div>
-              <div style={{fontSize:24,fontWeight:'bold',color:T.orange,letterSpacing:8}}>{kons.length?kons.join('  '):'–'}</div>
-            </div>
+        {displayMode==='gemischt'&&<div style={{letterSpacing:10,fontSize:32,fontWeight:'bold',color:T.yellow,textAlign:'center',padding:'20px 0',background:T.surf2,borderRadius:10}}>{q.display.join('  ')}</div>}
+        {displayMode==='getrennt'&&<div style={{display:'flex',gap:16}}>
+          <div style={{flex:1,background:T.surf2,borderRadius:10,padding:'16px',textAlign:'center'}}>
+            <div style={{color:T.muted,fontSize:11,letterSpacing:2,marginBottom:8}}>VOKALE</div>
+            <div style={{fontSize:24,fontWeight:'bold',color:T.teal,letterSpacing:8}}>{vok.length?vok.join('  '):'–'}</div>
           </div>
-        }
+          <div style={{flex:1,background:T.surf2,borderRadius:10,padding:'16px',textAlign:'center'}}>
+            <div style={{color:T.muted,fontSize:11,letterSpacing:2,marginBottom:8}}>KONSONANTEN</div>
+            <div style={{fontSize:24,fontWeight:'bold',color:T.orange,letterSpacing:8}}>{kons.length?kons.join('  '):'–'}</div>
+          </div>
+        </div>}
+        {displayMode==='wolke'&&<Buchstabenwolke letters={q.display}/>}
       </Card>
       <Card>
         <div style={{color:T.muted,fontSize:13,marginBottom:12}}>Welcher Buchstabe steht am Anfang?</div>
