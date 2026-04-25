@@ -128,6 +128,9 @@ export default function App() {
           <div>Tastatur: <span style={{ color:T.yellow }}>↑ ↓ ← →</span> navigieren · <span style={{ color:T.yellow }}>Enter</span> öffnen · <span style={{ color:T.yellow }}>1–6</span> direkt</div>
           <div>Im Test: <span style={{ color:T.yellow }}>A · S · D · F · G</span> für die fünf Antwortoptionen</div>
           <div style={{ marginTop:8 }}><a href="https://github.com/laurinx1234/openmedat" target="_blank" rel="noreferrer" style={{ color:T.muted, textDecoration:'none' }}>github.com/laurinx1234/openmedat</a></div>
+          <div style={{ marginTop:16, paddingTop:16, borderTop:`1px solid ${T.border}`, fontSize:12, color:T.muted, maxWidth:600, margin:'16px auto 0', lineHeight:1.6 }}>
+            openMedAT ist ein inoffizielles Hobbyprojekt und steht in keiner Verbindung zur Medizinischen Universität, dem MedAT oder dessen Veranstaltern. Alle Inhalte dienen ausschließlich der privaten Übung. Irrtümer und Fehler vorbehalten.
+          </div>
         </div>
       </div>
     </div>
