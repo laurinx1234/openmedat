@@ -1,0 +1,3 @@
+- beim winkelüben winkel grösse und ausrichtung verändern
+- allergieausweise "Abfragezeit (4 Min Lernzeit + Wartezeit):" => "Wartezeit"
+- github readme
