@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { T } from '../theme.js'
 import { Card, BackBtn, ProgressBar, ResultScreen, KeyHint, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
 
@@ -140,10 +140,13 @@ const PLACEHOLDER_SHAPES = [
   {id:'ph_trap', label:'Trapez',   isPlaceholder:true},
 ]
 const WINKEL_DATA = [
-  {sides:5, label:'Fünfeck',   deg:72},
-  {sides:6, label:'Sechseck',  deg:60},
-  {sides:7, label:'Siebeneck', deg:51.4},
-  {sides:8, label:'Achteck',   deg:45},
+  {sides:5, label:'Fünfeck',   deg:108},
+  {sides:6, label:'Sechseck',  deg:120},
+  {sides:7, label:'Siebeneck', deg:128.57},
+  {sides:8, label:'Achteck',   deg:135},
+]
+const TRICK_WINKEL = [
+  {sides:9, label:'Neuneck', deg:140},
 ]
 
 const PC = ['#89b4fa','#cba6f7','#94e2d5','#a6e3a1','#f9e2af','#fab387','#f38ba8','#f5c2e7','#89dceb']
@@ -200,17 +203,18 @@ function PieceTile({ data, rotation, color }) {
 }
 
 // ─── Winkel display: two rays from vertex, no arc, no degree label ─────────────
-function WinkelDisplay({ deg, size=200 }) {
+function WinkelDisplay({ deg, display={}, size=200 }) {
+  const { rotation=0, cx=size/2, cy=size*0.72, rayLen=size*0.44 } = display
   const rad = deg * Math.PI / 180
-  const cx = size/2, cy = size*0.72
-  const len = size * 0.44
   const halfRad = rad / 2
-  const x0 = cx + len * Math.sin(halfRad), y0 = cy - len * Math.cos(halfRad)
-  const x1 = cx - len * Math.sin(halfRad), y1 = cy - len * Math.cos(halfRad)
+  const x0 = cx + rayLen * Math.sin(halfRad), y0 = cy - rayLen * Math.cos(halfRad)
+  const x1 = cx - rayLen * Math.sin(halfRad), y1 = cy - rayLen * Math.cos(halfRad)
   return (
     <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
-      <line x1={cx} y1={cy} x2={x0.toFixed(1)} y2={y0.toFixed(1)} stroke={T.teal} strokeWidth="3" strokeLinecap="round"/>
-      <line x1={cx} y1={cy} x2={x1.toFixed(1)} y2={y1.toFixed(1)} stroke={T.teal} strokeWidth="3" strokeLinecap="round"/>
+      <g transform={`rotate(${rotation}, ${cx}, ${cy})`}>
+        <line x1={cx} y1={cy} x2={x0.toFixed(1)} y2={y0.toFixed(1)} stroke={T.teal} strokeWidth="3" strokeLinecap="round"/>
+        <line x1={cx} y1={cy} x2={x1.toFixed(1)} y2={y1.toFixed(1)} stroke={T.teal} strokeWidth="3" strokeLinecap="round"/>
+      </g>
     </svg>
   )
 }
@@ -244,13 +248,20 @@ export function makeTask() {
   return { pieces: pd, opts, correctIdx: ci, targetShape }
 }
 
-export function makeWinkelTask() {
-  const correct = pick(WINKEL_DATA)
-  const others = shuffle(WINKEL_DATA.filter(p => p.sides !== correct.sides))
+export function makeWinkelTask(prevSides) {
+  const trickPool = TRICK_WINKEL.filter(p => p.sides !== prevSides)
+  if (trickPool.length > 0 && Math.random() < 0.25) {
+    const trick = pick(trickPool)
+    const opts = [...shuffle(WINKEL_DATA), null]
+    return { deg: trick.deg, sides: trick.sides, opts, correctIdx: 4 }
+  }
+  const correctPool = WINKEL_DATA.filter(p => p.sides !== prevSides)
+  const correct = pick(correctPool)
+  const others = shuffle(WINKEL_DATA.filter(p => p.sides !== correct.sides)).slice(0, 3)
   const opts4 = shuffle([correct, ...others])
   const opts = [...opts4, null]
   const ci = opts.findIndex(o => o && o.sides === correct.sides)
-  return { deg: correct.deg, opts, correctIdx: ci }
+  return { deg: correct.deg, sides: correct.sides, opts, correctIdx: ci }
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -272,12 +283,15 @@ export default function Figuren({ onBack }) {
   const [done, setDone] = useState(false)
   const [showFb, setShowFb] = useState(false)
   const [fbReady, setFbReady] = useState(false)
+  const lastWinkelSides = useRef(null)
   const endless = count === 0
 
   function newQ(rem, type) {
     const qt = type ?? quizType
     if (qt === 'winkel') {
-      const q = makeWinkelTask()
+      const q = makeWinkelTask(lastWinkelSides.current)
+      lastWinkelSides.current = q.sides
+      q.display = { rotation: rnd(0,359), cx: rnd(75,125), cy: rnd(85,140), rayLen: rnd(55,85) }
       setQuestion(q); setRotations(['_']); setSelected(null); setShowFb(false); setFbReady(false)
     } else {
       const q = makeTask()
@@ -294,7 +308,7 @@ export default function Figuren({ onBack }) {
     setRemaining(rem)
   }
 
-  function startGame() { setScore(0); setTotal(0); setDone(false); newQ(count, quizType); setMode('game') }
+  function startGame() { setScore(0); setTotal(0); setDone(false); lastWinkelSides.current = null; newQ(count, quizType); setMode('game') }
 
   function answer(i) {
     if (selected !== null) return
@@ -378,6 +392,8 @@ export default function Figuren({ onBack }) {
   })
 
   // ── Winkel mode ──
+  const wFb = [...WINKEL_DATA, ...TRICK_WINKEL].find(w => w.sides === q.sides)
+  const wIsTrick = TRICK_WINKEL.some(t => t.sides === q.sides)
   if (quizType === 'winkel') return (
     <div style={{maxWidth:720,margin:'0 auto',padding:'24px 20px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
@@ -391,7 +407,7 @@ export default function Figuren({ onBack }) {
       <Card style={{marginBottom:16}}>
         <div style={{color:T.muted,fontSize:13,marginBottom:16}}>Zu welchem regelmäßigen Vieleck gehört dieser Winkel?</div>
         <div style={{display:'flex',justifyContent:'center'}}>
-          <WinkelDisplay deg={q.deg}/>
+          <WinkelDisplay deg={q.deg} display={q.display}/>
         </div>
       </Card>
       <Card>
@@ -406,8 +422,20 @@ export default function Figuren({ onBack }) {
         {!showFb && <KeyHint/>}
         {showFb && (
           <div style={{marginTop:16,background:T.surf2,borderRadius:12,padding:'16px 20px'}}>
-            <div style={{color:T.muted,fontSize:12,marginBottom:10}}>
-              {q.deg}° = 360° ÷ {Math.round(360/q.deg)} → <span style={{color:T.green,fontWeight:'bold'}}>{WINKEL_DATA.find(w=>Math.abs(w.deg-q.deg)<0.2)?.label}</span>
+            <div style={{fontSize:14,marginBottom:6}}>
+              <span style={{color:T.muted}}>Dieser Winkel ({q.deg}°) ist der Innenwinkel eines </span>
+              <span style={{color:T.green,fontWeight:'bold'}}>{wFb?.label}</span>
+              {wIsTrick && <span style={{color:T.muted}}> – nicht in den Optionen</span>}
+            </div>
+            <div style={{color:T.muted,fontSize:12,fontFamily:'monospace',marginBottom:14}}>
+              ({q.sides}−2) × 180° ÷ {q.sides} = {(q.sides-2)*180}° ÷ {q.sides} = {q.deg}°
+            </div>
+            <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
+              {[...WINKEL_DATA,...(wIsTrick?TRICK_WINKEL:[])].map(w=>(
+                <span key={w.sides} style={{fontSize:11,padding:'3px 9px',borderRadius:6,background:w.sides===q.sides?`${T.teal}22`:T.base,color:w.sides===q.sides?T.teal:T.muted,border:`1px solid ${w.sides===q.sides?T.teal:T.border}`}}>
+                  {w.label}: {w.deg}°
+                </span>
+              ))}
             </div>
             <button onClick={nextQ} style={{background:T.teal,border:'none',borderRadius:8,color:'#000',cursor:'pointer',padding:'8px 20px',fontSize:14,fontWeight:'bold'}}>
               Weiter <span style={{opacity:0.6,fontSize:12}}>(beliebige Taste)</span>
