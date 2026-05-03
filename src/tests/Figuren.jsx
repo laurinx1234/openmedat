@@ -139,14 +139,21 @@ const PLACEHOLDER_SHAPES = [
   {id:'ph_rect', label:'Rechteck', isPlaceholder:true},
   {id:'ph_trap', label:'Trapez',   isPlaceholder:true},
 ]
-const WINKEL_DATA = [
-  {sides:5, label:'Fünfeck',   deg:108},
-  {sides:6, label:'Sechseck',  deg:120},
-  {sides:7, label:'Siebeneck', deg:128.57},
-  {sides:8, label:'Achteck',   deg:135},
+const WINKEL_POLYGONS = [
+  {sides:5, label:'Fünfeck'},
+  {sides:6, label:'Sechseck'},
+  {sides:7, label:'Siebeneck'},
+  {sides:8, label:'Achteck'},
 ]
-const TRICK_WINKEL = [
-  {sides:9, label:'Neuneck', deg:140},
+const WINKEL_DATA = [
+  {sides:5, label:'Fünfeck',   type:'innen',  deg:108},
+  {sides:6, label:'Sechseck',  type:'innen',  deg:120},
+  {sides:7, label:'Siebeneck', type:'innen',  deg:128.57},
+  {sides:8, label:'Achteck',   type:'innen',  deg:135},
+  {sides:5, label:'Fünfeck',   type:'spitze', deg:36},
+  {sides:6, label:'Sechseck',  type:'spitze', deg:60},
+  {sides:7, label:'Siebeneck', type:'spitze', deg:77.14},
+  {sides:8, label:'Achteck',   type:'spitze', deg:90},
 ]
 
 const PC = ['#89b4fa','#cba6f7','#94e2d5','#a6e3a1','#f9e2af','#fab387','#f38ba8','#f5c2e7','#89dceb']
@@ -248,20 +255,15 @@ export function makeTask() {
   return { pieces: pd, opts, correctIdx: ci, targetShape }
 }
 
-export function makeWinkelTask(prevSides) {
-  const trickPool = TRICK_WINKEL.filter(p => p.sides !== prevSides)
-  if (trickPool.length > 0 && Math.random() < 0.25) {
-    const trick = pick(trickPool)
-    const opts = [...shuffle(WINKEL_DATA), null]
-    return { deg: trick.deg, sides: trick.sides, opts, correctIdx: 4 }
-  }
-  const correctPool = WINKEL_DATA.filter(p => p.sides !== prevSides)
-  const correct = pick(correctPool)
-  const others = shuffle(WINKEL_DATA.filter(p => p.sides !== correct.sides)).slice(0, 3)
-  const opts4 = shuffle([correct, ...others])
-  const opts = [...opts4, null]
+export function makeWinkelTask(prevDeg) {
+  const type = Math.random() < 0.5 ? 'innen' : 'spitze'
+  const pool = WINKEL_DATA.filter(p => p.type === type && p.deg !== prevDeg)
+  const correct = pick(pool)
+  const otherPolygons = shuffle(WINKEL_POLYGONS.filter(p => p.sides !== correct.sides))
+  const correctPolygon = WINKEL_POLYGONS.find(p => p.sides === correct.sides)
+  const opts = [...shuffle([correctPolygon, ...otherPolygons]), null]
   const ci = opts.findIndex(o => o && o.sides === correct.sides)
-  return { deg: correct.deg, sides: correct.sides, opts, correctIdx: ci }
+  return { deg: correct.deg, sides: correct.sides, type: correct.type, opts, correctIdx: ci }
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -283,14 +285,14 @@ export default function Figuren({ onBack }) {
   const [done, setDone] = useState(false)
   const [showFb, setShowFb] = useState(false)
   const [fbReady, setFbReady] = useState(false)
-  const lastWinkelSides = useRef(null)
+  const lastWinkelDeg = useRef(null)
   const endless = count === 0
 
   function newQ(rem, type) {
     const qt = type ?? quizType
     if (qt === 'winkel') {
-      const q = makeWinkelTask(lastWinkelSides.current)
-      lastWinkelSides.current = q.sides
+      const q = makeWinkelTask(lastWinkelDeg.current)
+      lastWinkelDeg.current = q.deg
       q.display = { rotation: rnd(0,359), cx: rnd(75,125), cy: rnd(85,140), rayLen: rnd(55,85) }
       setQuestion(q); setRotations(['_']); setSelected(null); setShowFb(false); setFbReady(false)
     } else {
@@ -308,7 +310,7 @@ export default function Figuren({ onBack }) {
     setRemaining(rem)
   }
 
-  function startGame() { setScore(0); setTotal(0); setDone(false); lastWinkelSides.current = null; newQ(count, quizType); setMode('game') }
+  function startGame() { setScore(0); setTotal(0); setDone(false); lastWinkelDeg.current = null; newQ(count, quizType); setMode('game') }
 
   function answer(i) {
     if (selected !== null) return
@@ -392,8 +394,9 @@ export default function Figuren({ onBack }) {
   })
 
   // ── Winkel mode ──
-  const wFb = [...WINKEL_DATA, ...TRICK_WINKEL].find(w => w.sides === q.sides)
-  const wIsTrick = TRICK_WINKEL.some(t => t.sides === q.sides)
+  const wFb = WINKEL_DATA.find(w => w.deg === q.deg)
+  const wInnen = WINKEL_DATA.filter(w => w.type === 'innen')
+  const wSpitze = WINKEL_DATA.filter(w => w.type === 'spitze')
   if (quizType === 'winkel') return (
     <div style={{maxWidth:720,margin:'0 auto',padding:'24px 20px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
@@ -423,19 +426,31 @@ export default function Figuren({ onBack }) {
         {showFb && (
           <div style={{marginTop:16,background:T.surf2,borderRadius:12,padding:'16px 20px'}}>
             <div style={{fontSize:14,marginBottom:6}}>
-              <span style={{color:T.muted}}>Dieser Winkel ({q.deg}°) ist der Innenwinkel eines </span>
+              <span style={{color:T.muted}}>Dieser Winkel ({q.deg}°) ist der {q.type === 'innen' ? 'Innenwinkel' : 'Spitzenwinkel'} eines </span>
               <span style={{color:T.green,fontWeight:'bold'}}>{wFb?.label}</span>
-              {wIsTrick && <span style={{color:T.muted}}> – nicht in den Optionen</span>}
             </div>
             <div style={{color:T.muted,fontSize:12,fontFamily:'monospace',marginBottom:14}}>
-              ({q.sides}−2) × 180° ÷ {q.sides} = {(q.sides-2)*180}° ÷ {q.sides} = {q.deg}°
+              {q.type === 'innen'
+                ? `(${q.sides}−2) × 180° ÷ ${q.sides} = ${(q.sides-2)*180}° ÷ ${q.sides} = ${q.deg}°`
+                : `180° − 720° ÷ ${q.sides} = 180° − ${Math.round(720/q.sides*100)/100}° = ${q.deg}°`}
             </div>
-            <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
-              {[...WINKEL_DATA,...(wIsTrick?TRICK_WINKEL:[])].map(w=>(
-                <span key={w.sides} style={{fontSize:11,padding:'3px 9px',borderRadius:6,background:w.sides===q.sides?`${T.teal}22`:T.base,color:w.sides===q.sides?T.teal:T.muted,border:`1px solid ${w.sides===q.sides?T.teal:T.border}`}}>
-                  {w.label}: {w.deg}°
-                </span>
-              ))}
+            <div style={{marginBottom:14}}>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:6,alignItems:'center'}}>
+                <span style={{color:T.muted,fontSize:10,minWidth:90}}>Innenwinkel:</span>
+                {wInnen.map(w=>(
+                  <span key={w.deg} style={{fontSize:11,padding:'3px 9px',borderRadius:6,background:w.deg===q.deg?`${T.teal}22`:T.base,color:w.deg===q.deg?T.teal:T.muted,border:`1px solid ${w.deg===q.deg?T.teal:T.border}`}}>
+                    {w.label}: {w.deg}°
+                  </span>
+                ))}
+              </div>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
+                <span style={{color:T.muted,fontSize:10,minWidth:90}}>Spitzenwinkel:</span>
+                {wSpitze.map(w=>(
+                  <span key={w.deg} style={{fontSize:11,padding:'3px 9px',borderRadius:6,background:w.deg===q.deg?`${T.teal}22`:T.base,color:w.deg===q.deg?T.teal:T.muted,border:`1px solid ${w.deg===q.deg?T.teal:T.border}`}}>
+                    {w.label}: {w.deg}°
+                  </span>
+                ))}
+              </div>
             </div>
             <button onClick={nextQ} style={{background:T.teal,border:'none',borderRadius:8,color:'#000',cursor:'pointer',padding:'8px 20px',fontSize:14,fontWeight:'bold'}}>
               Weiter <span style={{opacity:0.6,fontSize:12}}>(beliebige Taste)</span>
