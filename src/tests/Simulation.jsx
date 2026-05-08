@@ -698,7 +698,7 @@ export default function Simulation({onBack}){
           <Card style={{marginBottom:16}}>
             {q.showAvatar&&<div style={{display:'flex',justifyContent:'center',marginBottom:16}}><div style={{background:T.surf2,borderRadius:16,padding:8,overflow:'hidden',width:116,height:116,display:'flex',alignItems:'center',justifyContent:'center'}}><Avatar card={q.card} size={100}/></div></div>}
             <div style={{fontSize:17,color:T.text,marginBottom:8}}>{q.question}</div>
-            {!q.showAvatar&&<div style={{display:'flex',gap:10,marginTop:8}}><div style={{background:T.surf2,borderRadius:8,padding:4,overflow:'hidden',width:52,height:52,display:'flex',alignItems:'center',justifyContent:'center'}}><Avatar card={q.card} size={48}/></div><div style={{color:T.muted,fontSize:13,alignSelf:'center'}}>Person: <span style={{color:T.text}}>{q.card.name}</span></div></div>}
+            {!q.showAvatar&&<div style={{marginTop:8,color:T.muted,fontSize:13}}>Person: <span style={{color:T.text}}>{q.card.name}</span></div>}
           </Card>
           <Card>
             {q.opts.map((o,i)=>{
