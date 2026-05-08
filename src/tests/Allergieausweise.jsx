@@ -294,7 +294,7 @@ export default function Allergieausweise({onBack}){
         <Card>
           {[
             {label:'Anzahl Ausweise',key:'cardCount',opts:[{v:2,l:'2'},{v:3,l:'3'},{v:4,l:'4'},{v:5,l:'5'},{v:6,l:'6'},{v:7,l:'7'},{v:8,l:'8'}],row:0},
-            {label:`Abfragezeit (${settings.cardCount} Min Lernzeit + Wartezeit)`,key:'quizDelayMin',opts:[5,10,15,20,25,30,35,40,45,50,55,60].map(v=>({v,l:v+'m'})),row:1},
+            {label:'Wartezeit',key:'quizDelayMin',opts:[5,10,15,20,25,30,35,40,45,50,55,60].map(v=>({v,l:v+'m'})),row:1},
             {label:'Anzahl Fragen',key:'qCount',opts:[{v:5,l:'5'},{v:10,l:'10'},{v:15,l:'15'},{v:20,l:'20'},{v:25,l:'25'}],row:2},
           ].map(({label,key,opts,row})=>(
             <div key={key} style={{marginBottom:20}}>

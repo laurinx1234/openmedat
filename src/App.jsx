@@ -16,7 +16,7 @@ const TESTS = [
   { path:'/implikationen',   title:'Implikationen erkennen', icon:'🧠', desc:'Zwei Aussagen → logische Schlussfolgerung', color:T.yellow },
   { path:'/allergieausweise',title:'Allergieausweise',       icon:'💳', desc:'Ausweise merken und Fragen beantworten',   color:T.green  },
   { path:'/figuren',         title:'Figuren zusammensetzen', icon:'🔷', desc:'Einzelteile zu einer Figur zusammensetzen', color:T.teal  },
-  { path:'/major-system',   title:'Major-System',            icon:'🔗', desc:'Zahlen mit Bildwörtern verknüpfen – Gedächtnistraining', color:T.pink  },
+  { path:'/major-system',   title:'Major-System',            icon:'🔗', desc:'Zahlen mit Bildwörtern verknüpfen', color:T.pink  },
   { path:'/simulation',      title:'Simulation',             icon:'🎓', desc:'Kompletter Testtag – alle 5 Kategorien',   color:T.orange },
 ]
 
