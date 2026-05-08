@@ -118,7 +118,7 @@ function getOptionText(q,i){
 }
 function getQuestionPrompt(q,catKey){
   if(q.question)return q.question
-  if(q.p1&&q.p2)return null // rendered separately
+  if(q.p1&&q.p2)return null
   if(q.visible)return q.visible.join('  ') + '  →  ?  ,  ?'
   if(q.display)return q.display.join('  ')
   return null
@@ -132,16 +132,19 @@ function ReviewPanel({categories,onBack}){
   useEffect(()=>{
     const h=e=>{
       if(e.key==='ArrowRight'){e.preventDefault();setQi(qi=>Math.min(qi+1,cat.questions.length-1))}
-      if(e.key==='ArrowLeft'){e.preventDefault();setQi(qi=>Math.max(qi-1,0))}
-      if(e.key==='Escape')onBack()
+      else if(e.key==='ArrowLeft'){e.preventDefault();setQi(qi=>Math.max(qi-1,0))}
+      else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();setCi(ci=>{const nxt=e.key==='ArrowDown'?Math.min(ci+1,categories.length-1):Math.max(ci-1,0);return nxt});setQi(0)}
+      else if(e.key==='Escape')onBack()
     }
     window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)
-  },[ci,qi,cat.questions.length,onBack])
+  },[ci,qi,cat.questions.length,categories.length,onBack])
   return(
     <div style={{maxWidth:760,margin:'0 auto',padding:'20px 20px'}}>
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}>
         <button onClick={onBack} style={{background:'none',border:`1px solid ${T.border}`,borderRadius:8,color:T.muted,cursor:'pointer',padding:'6px 14px',fontSize:13}}>← Übersicht</button>
         <div style={{color:T.text,fontWeight:'bold',fontSize:16}}>Antworten ansehen</div>
+        <div style={{flex:1}}/>
+        <span style={{color:T.muted,fontSize:11}}>← → Frage · ↑ ↓ Kategorie · Esc zurück</span>
       </div>
       <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}}>
         {categories.map((c,i)=>(<button key={i} onClick={()=>{setCi(i);setQi(0)}} style={{background:ci===i?`${c.color}25`:T.surf2,border:`1px solid ${ci===i?c.color:T.border}`,borderRadius:8,color:ci===i?c.color:T.text,cursor:'pointer',padding:'8px 14px',fontSize:13,display:'flex',alignItems:'center',gap:6}}><span>{c.icon}</span>{c.label}<span style={{color:T.muted,fontSize:11}}>({c.answers.filter(a=>a!==null).length}/{c.questions.length})</span></button>))}
@@ -151,7 +154,7 @@ function ReviewPanel({categories,onBack}){
         <span style={{color:T.text,fontSize:14}}>{qi+1} / {cat.questions.length}</span>
         <button onClick={()=>setQi(q=>Math.min(q+1,cat.questions.length-1))} disabled={qi===cat.questions.length-1} style={{background:'none',border:'none',color:qi===cat.questions.length-1?T.border:T.text,cursor:qi===cat.questions.length-1?'default':'pointer',fontSize:18}}>►</button>
         <div style={{flex:1}}/>
-        <span style={{color:correct?T.green:T.red,fontWeight:'bold',fontSize:13}}>{correct?'✓ Richtig':'✗ Falsch'}</span>
+        <span style={{color:correct?T.green:T.red,fontWeight:'bold',fontSize:13}}>{ans===null?'Nicht beantwortet':correct?'✓ Richtig':'✗ Falsch'}</span>
       </div>
       <Card style={{marginBottom:12}}>
         {q.p1&&q.p2?(
@@ -160,8 +163,9 @@ function ReviewPanel({categories,onBack}){
             {[q.p1,q.p2].map((p,i)=>(<div key={i} style={{background:T.surf2,borderRadius:10,padding:'14px 18px',borderLeft:`3px solid ${cat.color}`,marginBottom:10,color:T.text,fontSize:16}}>{p}</div>))}
           </div>
         ):(
-          <div style={{fontSize:17,color:T.text}}>{getQuestionPrompt(q,cat.key)||'Frage'}</div>
+          <div style={{fontSize:17,color:T.text,marginBottom:q.word?12:0}}>{getQuestionPrompt(q,cat.key)||'Frage'}</div>
         )}
+        {q.word&&<div style={{color:T.muted,fontSize:15,marginTop:8}}>Wort: <span style={{color:cat.color,fontWeight:'bold',fontSize:20,letterSpacing:4}}>{q.word.toUpperCase()}</span></div>}
         {q.showAvatar&&q.card&&(
           <div style={{display:'flex',justifyContent:'center',marginTop:12}}>
             <div style={{background:T.surf2,borderRadius:16,padding:8,overflow:'hidden',width:80,height:80,display:'flex',alignItems:'center',justifyContent:'center'}}><Avatar card={q.card} size={64}/></div>
@@ -170,22 +174,23 @@ function ReviewPanel({categories,onBack}){
       </Card>
       <Card>
         {Array.from({length:q.opts?q.opts.length:q.options?q.options.length:q.choices?q.choices.length:0},(_,i)=>{
+          const o=q.opts?q.opts[i]:null
           const isCorrect=i===q.correctIdx
           const isUserPick=i===ans
           const bg=isCorrect?`${T.green}22`:isUserPick?`${T.red}22`:T.surf2
           const border=isCorrect?T.green:isUserPick?T.red:T.border
           return(
-            <div key={i} style={{display:'flex',alignItems:'flex-start',gap:12,width:'100%',background:bg,border:`1px solid ${border}`,borderRadius:10,color:T.text,padding:'12px 16px',fontSize:14,textAlign:'left',marginBottom:8}}>
+            <div key={i} style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:bg,border:`1px solid ${border}`,borderRadius:10,color:T.text,padding:'10px 16px',fontSize:14,textAlign:'left',marginBottom:8}}>
               <span style={{color:T.yellow,minWidth:22,fontWeight:'bold',flexShrink:0}}>{OPTS[i]}</span>
-              <span style={{flex:1}}>{getOptionText(q,i)}</span>
-              {isCorrect&&isUserPick&&<span style={{color:T.green,fontWeight:'bold',marginLeft:'auto'}}>✓ Richtig</span>}
-              {isCorrect&&!isUserPick&&<span style={{color:T.green,fontWeight:'bold',marginLeft:'auto'}}>✓ Richtige Antwort</span>}
-              {isUserPick&&!isCorrect&&<span style={{color:T.red,fontWeight:'bold',marginLeft:'auto'}}>✗ Deine Wahl</span>}
+              {o&&o.shape?<div style={{display:'flex',alignItems:'center',gap:10,flex:1}}><FigAnswerSVG shape={o.shape} size={48}/><span>{o.shape.label}</span></div>:<span style={{flex:1}}>{getOptionText(q,i)}</span>}
+              {isCorrect&&isUserPick&&<span style={{color:T.green,fontWeight:'bold',marginLeft:'auto',flexShrink:0}}>✓ Richtig</span>}
+              {isCorrect&&!isUserPick&&<span style={{color:T.green,fontWeight:'bold',marginLeft:'auto',flexShrink:0}}>✓ Richtige Antwort</span>}
+              {isUserPick&&!isCorrect&&<span style={{color:T.red,fontWeight:'bold',marginLeft:'auto',flexShrink:0}}>✗ Deine Wahl</span>}
             </div>
           )
         })}
         {ans===null&&<div style={{color:T.muted,fontSize:13,fontStyle:'italic'}}>Nicht beantwortet</div>}
-        <div style={{color:T.muted,fontSize:11,marginTop:8}}>← → blättern · Esc zurück</div>
+        <div style={{color:T.muted,fontSize:11,marginTop:8}}>← → Frage · ↑ ↓ Kategorie · Esc zurück</div>
       </Card>
     </div>
   )
