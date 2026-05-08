@@ -111,7 +111,7 @@ function QuestionScreen({phase,questions,answers,setAnswers,current,setCurrent,c
 
 // ─── Results ──────────────────────────────────────────────────────────────────
 function getOptionText(q,i){
-  if(q.opts){const o=q.opts[i];if(o==='keine'||o===undefined)return'Keine Antwort ist richtig.';if(typeof o==='object'&&o.shape)return o.shape.label||'Figur';if(Array.isArray(o))return o.join(' , ');return String(o)}
+  if(q.opts){const o=q.opts[i];if(o==='keine'||o===undefined)return'Keine Antwort ist richtig.';if(typeof o==='object'&&o!==null){if(o.shape)return o.shape.label||'Figur';return'Keine der Figuren ist richtig.'}if(Array.isArray(o))return o.join(' , ');return String(o)}
   if(q.options)return String(q.options[i])
   if(q.choices){const c=q.choices[i];if(c==='keine')return'Keine Option ist richtig.';if(Array.isArray(c))return c.join(' , ');return String(c)}
   return''
@@ -182,7 +182,7 @@ function ReviewPanel({categories,onBack}){
           return(
             <div key={i} style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:bg,border:`1px solid ${border}`,borderRadius:10,color:T.text,padding:'10px 16px',fontSize:14,textAlign:'left',marginBottom:8}}>
               <span style={{color:T.yellow,minWidth:22,fontWeight:'bold',flexShrink:0}}>{OPTS[i]}</span>
-              {o&&o.shape?<div style={{display:'flex',alignItems:'center',gap:10,flex:1}}><FigAnswerSVG shape={o.shape} size={48}/><span>{o.shape.label}</span></div>:<span style={{flex:1}}>{getOptionText(q,i)}</span>}
+              {o&&o.shape?<div style={{display:'flex',alignItems:'center',gap:10,flex:1}}><FigAnswerSVG shape={o.shape} size={48}/><span>{o.shape.label}</span></div>:o&&typeof o==='object'&&o!==null&&o.shape===null?<span style={{flex:1,color:T.muted}}>Keine der Figuren ist richtig.</span>:<span style={{flex:1}}>{getOptionText(q,i)}</span>}
               {isCorrect&&isUserPick&&<span style={{color:T.green,fontWeight:'bold',marginLeft:'auto',flexShrink:0}}>✓ Richtig</span>}
               {isCorrect&&!isUserPick&&<span style={{color:T.green,fontWeight:'bold',marginLeft:'auto',flexShrink:0}}>✓ Richtige Antwort</span>}
               {isUserPick&&!isCorrect&&<span style={{color:T.red,fontWeight:'bold',marginLeft:'auto',flexShrink:0}}>✗ Deine Wahl</span>}
@@ -198,6 +198,14 @@ function ReviewPanel({categories,onBack}){
 
 function ResultsScreen({scores,onBack,reviewData}){
   const[view,setView]=useState('scores')
+  useEffect(()=>{
+    if(view!=='scores')return
+    const h=e=>{
+      if(e.key==='Escape')onBack()
+      if(e.key==='Enter'){e.preventDefault();if(reviewData)setView('review')}
+    }
+    window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)
+  },[view,onBack,reviewData])
   const cats=[
     {k:'figuren',label:'Figuren zusammensetzen',color:T.teal, icon:'🔷'},
     {k:'zahlen', label:'Zahlenfolgen',           color:T.blue, icon:'🔢'},
@@ -252,10 +260,11 @@ function ResultsScreen({scores,onBack,reviewData}){
           <span style={{color:col,fontWeight:'bold',fontSize:18}}>{total40.toFixed(1)} / 40 Punkten = {totalPct}%</span>
         </div>
       </Card>
-      <div style={{display:'flex',gap:12,justifyContent:'center'}}>
+      <div style={{display:'flex',gap:12,justifyContent:'center',marginBottom:12}}>
         <button onClick={onBack} style={{background:T.surf2,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,cursor:'pointer',padding:'12px 28px',fontSize:15}}>← Hauptmenü</button>
         {reviewData&&<button onClick={()=>setView('review')} style={{background:T.orange,border:'none',borderRadius:8,color:'#000',cursor:'pointer',padding:'12px 28px',fontSize:15,fontWeight:'bold'}}>Antworten ansehen</button>}
       </div>
+      <div style={{textAlign:'center',color:T.muted,fontSize:11}}>Esc → Hauptmenü · Enter → Antworten ansehen</div>
     </div>
   )
 }
