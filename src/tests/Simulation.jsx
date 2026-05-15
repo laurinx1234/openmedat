@@ -539,15 +539,17 @@ export default function Simulation({onBack}){
       <Card>
         <div style={{marginBottom:24}}>
           <div style={{color:T.muted,fontSize:13,marginBottom:16}}>Simulierter MedAT-Testtag in Originalreihenfolge. Innerhalb jeder Kategorie kannst du Fragen überspringen und später beantworten. Ergebnisse werden erst am Ende angezeigt.</div>
-          <div style={{display:'grid',gap:0}}>
+          <div style={{display:'flex',flexWrap:'wrap',justifyContent:'center',gap:12,maxWidth:560,margin:'0 auto'}}>
             {PHASES.map((ph,i)=>(
-              <div key={ph.id} style={{display:'flex',gap:14,alignItems:'center',padding:'10px 0',borderBottom:i<PHASES.length-1?`1px solid ${T.border}`:'none'}}>
-                <span style={{fontSize:20,minWidth:28}}>{ph.icon}</span>
-                <div style={{flex:1}}>
-                  <span style={{color:ph.color,fontWeight:'bold',fontSize:13}}>{ph.label}</span>
-                  <span style={{color:T.muted,fontSize:12,marginLeft:10}}>{ph.id==='allerg_l'?'8 Ausweise lernen':`${ph.n} Fragen`} · {Math.round(ph.secs/60)} Min</span>
+              <div key={ph.id} style={{background:T.surf2,border:`1px solid ${T.border}`,borderRadius:12,padding:'16px 18px',display:'flex',flexDirection:'column',gap:8,width:260}}>
+                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{fontSize:20}}>{ph.icon}</span>
+                  <span style={{color:ph.color,fontWeight:'bold',fontSize:14}}>{ph.label}</span>
                 </div>
-                <span style={{color:T.muted,fontSize:11}}>{phWeight(ph.id)}</span>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{color:T.muted,fontSize:12}}>{ph.id==='allerg_l'?'8 Ausweise lernen':`${ph.n} Fragen`} · {Math.round(ph.secs/60)} Min</span>
+                  <span style={{color:T.muted,fontSize:11}}>{phWeight(ph.id)}</span>
+                </div>
               </div>
             ))}
           </div>

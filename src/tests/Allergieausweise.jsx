@@ -152,7 +152,7 @@ export function makeQuestion(shown,all){
     const card=pick(shown);const qt=pick(Q_TYPES)
     if(qt.check&&!qt.check(card,shown))continue
     const correct=qt.correct(card)
-    const pool=[...new Set(qt.pool(shown))].filter(v=>v!==correct)
+    const pool=[...new Set(qt.pool(all))].filter(v=>v!==correct)
     if(pool.length<3)continue
     const noneCorrect=Math.random()<0.15
     let opts,ci
@@ -179,7 +179,7 @@ export default function Allergieausweise({onBack}){
     if(s&&isQuizReady())return'quiz_pending'
     return'settings'
   })
-  const[settings,setSettings]=useState({cardCount:4,quizDelayMin:15,qCount:10})
+  const[settings,setSettings]=useState({cardCount:4,learnMin:4,quizDelayMin:15,qCount:10})
   const[allCards,setAllCards]=useState([])
   const[shownCards,setShownCards]=useState([])
   const[learnTimer,resetLearn]=useTimer(0)
@@ -188,6 +188,9 @@ export default function Allergieausweise({onBack}){
   const[selected,setSelected]=useState(null)
   const[score,setScore]=useState(0)
   const[done,setDone]=useState(false)
+
+  // Sync learnMin with cardCount
+  useEffect(()=>{setSettings(s=>({...s,learnMin:s.cardCount}))},[settings.cardCount])
 
   // If quiz pending on mount, load it
   useEffect(()=>{
@@ -209,7 +212,7 @@ export default function Allergieausweise({onBack}){
     setAllCards(pool)
     const shown=pool.slice(0,settings.cardCount)
     setShownCards(shown)
-    resetLearn(settings.cardCount*60)  // 1 min per card
+    resetLearn(settings.learnMin*60)
     setPhase('learn')
   }
 
@@ -270,6 +273,7 @@ export default function Allergieausweise({onBack}){
   // Settings keyboard
   const skGroupDefs=[
     [{v:2},{v:3},{v:4},{v:5},{v:6},{v:7},{v:8}].map(()=>({action:()=>{}})).map((o,i)=>({action:()=>setSettings(s=>({...s,cardCount:[2,3,4,5,6,7,8][i]}))})),
+    [1,2,3,4,5,6,7,8,9,10,12,15].map((v,i)=>({action:()=>setSettings(s=>({...s,learnMin:v}))})),
     [5,10,15,20,25,30,35,40,45,50,55,60].map((v,i)=>({action:()=>setSettings(s=>({...s,quizDelayMin:v}))})),
     [5,10,15,20,25].map((v)=>({action:()=>setSettings(s=>({...s,qCount:v}))})),
   ]
@@ -294,12 +298,13 @@ export default function Allergieausweise({onBack}){
         <Card>
           {[
             {label:'Anzahl Ausweise',key:'cardCount',opts:[{v:2,l:'2'},{v:3,l:'3'},{v:4,l:'4'},{v:5,l:'5'},{v:6,l:'6'},{v:7,l:'7'},{v:8,l:'8'}],row:0},
-            {label:'Wartezeit',key:'quizDelayMin',opts:[5,10,15,20,25,30,35,40,45,50,55,60].map(v=>({v,l:v+'m'})),row:1},
-            {label:'Anzahl Fragen',key:'qCount',opts:[{v:5,l:'5'},{v:10,l:'10'},{v:15,l:'15'},{v:20,l:'20'},{v:25,l:'25'}],row:2},
+            {label:'Lernzeit',key:'learnMin',opts:[1,2,3,4,5,6,7,8,9,10,12,15].map(v=>({v,l:v+' Min'})),row:1},
+            {label:'Wartezeit',key:'quizDelayMin',opts:[5,10,15,20,25,30,35,40,45,50,55,60].map(v=>({v,l:v+'m'})),row:2},
+            {label:'Anzahl Fragen',key:'qCount',opts:[{v:5,l:'5'},{v:10,l:'10'},{v:15,l:'15'},{v:20,l:'20'},{v:25,l:'25'}],row:3},
           ].map(({label,key,opts,row})=>(
             <div key={key} style={{marginBottom:20}}>
               <div style={{color:T.muted,fontSize:13,marginBottom:8}}>{label}:</div>
-              {key==='cardCount'&&<div style={{color:T.muted,fontSize:11,marginBottom:6}}>Lernzeit: {settings.cardCount} Min (1 Min / Ausweis)</div>}
+              {key==='cardCount'&&<div style={{color:T.muted,fontSize:11,marginBottom:6}}>Lernzeit: {settings.learnMin} Min</div>}
               <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                 {opts.map((o,i)=>(<button key={o.v} onClick={()=>setSettings(s=>({...s,[key]:o.v}))} style={{background:settings[key]===o.v?`${T.green}22`:T.surf2,border:`1px solid ${settings[key]===o.v?T.green:T.border}`,borderRadius:8,color:settings[key]===o.v?T.green:T.text,cursor:'pointer',padding:'8px 14px',fontSize:13,boxShadow:skF(row,i)?`0 0 0 2px ${T.green}`:'none'}}>{o.l}</button>))}
               </div>
@@ -337,7 +342,7 @@ export default function Allergieausweise({onBack}){
           <TimerBadge seconds={learnTimer}/>
         </div>
       </div>
-      <div style={{background:T.surf2,borderRadius:6,height:6,marginBottom:24}}><div style={{height:'100%',background:T.green,borderRadius:6,width:`${(learnTimer/(settings.cardCount*60))*100}%`,transition:'width 1s linear'}}/></div>
+      <div style={{background:T.surf2,borderRadius:6,height:6,marginBottom:24}}><div style={{height:'100%',background:T.green,borderRadius:6,width:`${(learnTimer/(settings.learnMin*60))*100}%`,transition:'width 1s linear'}}/></div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:16}}>
         {shownCards.map((c,i)=><AusweisCard key={i} card={c}/>)}
       </div>
