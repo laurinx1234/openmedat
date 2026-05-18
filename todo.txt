@@ -3,3 +3,5 @@
 - github readme
 ✓ bei simulationen die richtigen und falschen antworten anzeigen
 - mehr wörter für wortflüssigkeit
+- simulationsrechner
+- rhesusfaktor bei allergieausweise entfernen
