@@ -9,6 +9,7 @@ import Allergieausweise from './tests/Allergieausweise.jsx'
 import Figuren from './tests/Figuren.jsx'
 import MajorSystem from './tests/MajorSystem.jsx'
 import Simulation from './tests/Simulation.jsx'
+import Simulationsrechner from './tests/Simulationsrechner.jsx'
 
 const TESTS = [
   { path:'/zahlenfolgen',    title:'Zahlenfolgen',           icon:'🔢', desc:'7 Zahlen → 8. und 9. Stelle berechnen',    color:T.blue   },
@@ -18,6 +19,7 @@ const TESTS = [
   { path:'/figuren',         title:'Figuren zusammensetzen', icon:'🔷', desc:'Einzelteile zu einer Figur zusammensetzen', color:T.teal  },
   { path:'/major-system',   title:'Major-System',            icon:'🔗', desc:'Zahlen mit Bildwörtern verknüpfen', color:T.pink  },
   { path:'/simulation',      title:'Simulation',             icon:'🎓', desc:'Kompletter Testtag – alle 5 Kategorien',   color:T.orange },
+  { path:'/simulationsrechner',title:'Simulationsrechner',      icon:'📝', desc:'Simulationstimer und -Auswertung für externe Simulationen', color:T.orange },
 ]
 
 const goHome = () => navigate('/')
@@ -31,6 +33,7 @@ function renderScreen(route) {
     case '/figuren':         return <Figuren         onBack={goHome}/>
     case '/major-system':   return <MajorSystem     onBack={goHome}/>
     case '/simulation':      return <Simulation      onBack={goHome}/>
+    case '/simulationsrechner':return <Simulationsrechner onBack={goHome}/>
     default: return null
   }
 }
@@ -97,7 +100,7 @@ export default function App() {
       else if (e.key === 'ArrowDown')  { e.preventDefault(); setFocused(f => Math.min(f+cols, TESTS.length-1)) }
       else if (e.key === 'ArrowUp')    { e.preventDefault(); setFocused(f => Math.max(f-cols, 0)) }
       else if (e.key === 'Enter')      navigate(TESTS[focused].path)
-      else if (e.key >= '1' && e.key <= '7') navigate(TESTS[parseInt(e.key)-1].path)
+      else if (e.key >= '1' && e.key <= '8') navigate(TESTS[parseInt(e.key)-1].path)
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
@@ -118,7 +121,7 @@ export default function App() {
         <div style={{ textAlign:'center', marginBottom:56 }}>
           <div style={{ fontSize:13, letterSpacing:4, color:T.muted, marginBottom:12 }}>MEDIZINISCHER AUFNAHMETEST</div>
           <div style={{ fontSize:46, fontWeight:'bold', color:T.text, marginBottom:8, letterSpacing:-2 }}>openMedAT</div>
-          <div style={{ fontSize:16, color:T.muted }}>Kognitive Fähigkeiten und Fertigkeiten — 6 Testmodule + Simulation</div>
+          <div style={{ fontSize:16, color:T.muted }}>Kognitive Fähigkeiten und Fertigkeiten — 8 Testmodule</div>
         </div>
         <QuizBadge/>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(340px, 1fr))', gap:16, marginBottom:48 }}>
@@ -128,7 +131,7 @@ export default function App() {
           ))}
         </div>
         <div style={{ textAlign:'center', color:T.muted, fontSize:13, lineHeight:2 }}>
-          <div>Tastatur: <span style={{ color:T.yellow }}>↑ ↓ ← →</span> navigieren · <span style={{ color:T.yellow }}>Enter</span> öffnen · <span style={{ color:T.yellow }}>1–7</span> direkt</div>
+          <div>Tastatur: <span style={{ color:T.yellow }}>↑ ↓ ← →</span> navigieren · <span style={{ color:T.yellow }}>Enter</span> öffnen · <span style={{ color:T.yellow }}>1–8</span> direkt</div>
           <div>Im Test: <span style={{ color:T.yellow }}>A · S · D · F · G</span> für die fünf Antwortoptionen</div>
           <div style={{ marginTop:8 }}><a href="https://github.com/laurinx1234/openmedat" target="_blank" rel="noreferrer" style={{ color:T.muted, textDecoration:'none' }}>github.com/laurinx1234/openmedat</a></div>
           <div style={{ marginTop:16, paddingTop:16, borderTop:`1px solid ${T.border}`, fontSize:12, color:T.muted, maxWidth:600, margin:'16px auto 0', lineHeight:1.6 }}>
