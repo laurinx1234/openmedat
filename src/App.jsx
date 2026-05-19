@@ -10,6 +10,7 @@ import Figuren from './tests/Figuren.jsx'
 import MajorSystem from './tests/MajorSystem.jsx'
 import Simulation from './tests/Simulation.jsx'
 import Simulationsrechner from './tests/Simulationsrechner.jsx'
+import Feedback from './components/Feedback.jsx'
 
 const TESTS = [
   { path:'/zahlenfolgen',    title:'Zahlenfolgen',           icon:'🔢', desc:'7 Zahlen → 8. und 9. Stelle berechnen',    color:T.blue   },
@@ -111,12 +112,14 @@ export default function App() {
     return (
       <div style={{ minHeight:'100vh', background:T.bg, paddingBottom:60 }}>
         {screen}
+        <Feedback />
       </div>
     )
   }
 
   return (
     <div style={{ minHeight:'100vh', background:T.bg, color:T.text }}>
+      <Feedback />
       <div style={{ maxWidth:900, margin:'0 auto', padding:'48px 24px' }}>
         <div style={{ textAlign:'center', marginBottom:56 }}>
           <div style={{ fontSize:13, letterSpacing:4, color:T.muted, marginBottom:12 }}>MEDIZINISCHER AUFNAHMETEST</div>
