@@ -5,3 +5,5 @@
 - mehr wörter für wortflüssigkeit
 ✓ simulationsrechner
 ✓ rhesusfaktor bei allergieausweise entfernen
+- major-system bugfix: richtige antwortmöglichkeit zufällig
+- simulationsbeschreibung => Komplette KFF-Simulation - alle 5 Kategorien

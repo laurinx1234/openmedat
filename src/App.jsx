@@ -93,6 +93,13 @@ export default function App() {
   const [focused, setFocused] = useState(0)
 
   useEffect(() => {
+    if (route === '/') return
+    const h = e => { e.preventDefault() }
+    window.addEventListener('beforeunload', h)
+    return () => window.removeEventListener('beforeunload', h)
+  }, [route])
+
+  useEffect(() => {
     if (route !== '/') return
     const cols = 2
     const h = e => {
