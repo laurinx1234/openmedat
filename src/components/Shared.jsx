@@ -182,6 +182,46 @@ export function useSettingsKeyboard(rows, onStart, onBack, active) {
   }
 }
 
+export function NavDots({ questions, answers, current, onGo, color }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 16 }}>
+      {questions.map((_, i) => {
+        const ans = answers[i]
+        const isCur = i === current
+        const col = isCur ? color : ans !== null ? `${color}88` : T.surf2
+        const border = isCur ? color : ans !== null ? `${color}88` : T.border
+        return (
+          <button key={i} onClick={() => onGo(i)}
+            style={{
+              width: 28, height: 28, borderRadius: 6, background: col, border: `1px solid ${border}`,
+              color: isCur ? '#000' : T.text, fontSize: 11, cursor: 'pointer', fontWeight: isCur ? 'bold' : 'normal',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+            {i + 1}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(880, ctx.currentTime)
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.15)
+    gain.gain.setValueAtTime(0.3, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.6)
+  } catch (e) { /* Audio not available */ }
+}
+
 export const rnd = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
 export const pick = arr => arr[Math.floor(Math.random() * arr.length)]
 export const shuffle = arr => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = rnd(0, i); [a[i], a[j]] = [a[j], a[i]] }; return a }

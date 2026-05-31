@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { T } from './theme.js'
 import { navigate, useRoute } from './router.js'
 import { getSession, isQuizReady, minutesUntilQuiz } from './allergStore.js'
+import { playBeep } from './components/Shared.jsx'
 import Zahlenfolgen from './tests/Zahlenfolgen.jsx'
 import Wortfluessigkeit from './tests/Wortfluessigkeit.jsx'
 import Implikationen from './tests/Implikationen.jsx'
@@ -42,13 +43,15 @@ function renderScreen(route) {
 
 function QuizBadge() {
   const [, forceRender] = useState(0)
+  const beeped = useRef(false)
   useEffect(() => {
     const id = setInterval(() => forceRender(n => n+1), 15000)
     return () => clearInterval(id)
   }, [])
   const session = getSession()
-  if (!session) return null
+  if (!session) { beeped.current = false; return null }
   const ready = isQuizReady()
+  if (ready && !beeped.current) { playBeep(); beeped.current = true }
   const mins = minutesUntilQuiz()
   return (
     <div onClick={() => navigate('/allergieausweise')}

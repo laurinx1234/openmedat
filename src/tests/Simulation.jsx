@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, TimerBadge, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, TimerBadge, NavDots, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
 import { makeTask as makeZahlen } from './Zahlenfolgen.jsx'
 import { makeTask as makeWort } from './Wortfluessigkeit.jsx'
 import { makeTask as makeImpl } from './Implikationen.jsx'
@@ -22,26 +22,6 @@ const WEIGHTS = { figuren:8, zahlen:5.3, wort:8, allerg:13.4, impl:5.3 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function pct(n,d){return d>0?Math.round(n/d*100):0}
-
-// ─── Navigator dots ───────────────────────────────────────────────────────────
-function NavDots({questions,answers,current,onGo,color}){
-  return(
-    <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:16}}>
-      {questions.map((_,i)=>{
-        const ans=answers[i]
-        const isCur=i===current
-        const col=isCur?color:ans!==null?`${color}88`:T.surf2
-        const border=isCur?color:ans!==null?`${color}88`:T.border
-        return<button key={i} onClick={()=>onGo(i)}
-          style={{width:28,height:28,borderRadius:6,background:col,border:`1px solid ${border}`,
-            color:isCur?'#000':T.text,fontSize:11,cursor:'pointer',fontWeight:isCur?'bold':'normal',
-            display:'flex',alignItems:'center',justifyContent:'center'}}>
-          {i+1}
-        </button>
-      })}
-    </div>
-  )
-}
 
 // ─── Generic question screen with skip/nav ────────────────────────────────────
 function QuestionScreen({phase,questions,answers,setAnswers,current,setCurrent,color,renderQuestion,renderOptions}){

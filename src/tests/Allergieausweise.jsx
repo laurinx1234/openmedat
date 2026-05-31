@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, NavDots, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS, playBeep } from '../components/Shared.jsx'
 import { setSession, getSession, clearSession, isQuizReady } from '../allergStore.js'
 import { navigate } from '../router.js'
 
@@ -185,8 +185,7 @@ export default function Allergieausweise({onBack}){
   const[learnTimer,resetLearn]=useTimer(0)
   const[questions,setQuestions]=useState([])
   const[qIdx,setQIdx]=useState(0)
-  const[selected,setSelected]=useState(null)
-  const[score,setScore]=useState(0)
+  const[answers,setAnswers]=useState([])
   const[done,setDone]=useState(false)
 
   // Sync learnMin with cardCount
@@ -198,7 +197,7 @@ export default function Allergieausweise({onBack}){
       const s=getSession()
       if(s){
         const qs=Array.from({length:s.qCount},()=>makeQuestion(s.shownCards,s.allCards))
-        setQuestions(qs);setQIdx(0);setSelected(null);setScore(0);setDone(false)
+        setQuestions(qs);setQIdx(0);setAnswers(Array(qs.length).fill(null));setDone(false)
         setPhase('quiz')
       }
     }
@@ -243,7 +242,7 @@ export default function Allergieausweise({onBack}){
 
   function startQuiz(){
     const qs=Array.from({length:settings.qCount},()=>makeQuestion(shownCards,allCards))
-    setQuestions(qs);setQIdx(0);setSelected(null);setScore(0);setDone(false)
+    setQuestions(qs);setQIdx(0);setAnswers(Array(qs.length).fill(null));setDone(false)
     setPhase('quiz')
   }
 
@@ -251,24 +250,25 @@ export default function Allergieausweise({onBack}){
     const s=getSession()
     if(!s)return
     const qs=Array.from({length:s.qCount},()=>makeQuestion(s.shownCards,s.allCards))
-    setQuestions(qs);setQIdx(0);setSelected(null);setScore(0);setDone(false)
+    setQuestions(qs);setQIdx(0);setAnswers(Array(qs.length).fill(null));setDone(false)
     setPhase('quiz')
   }
 
   const answer=useCallback((i)=>{
-    if(selected!==null||done)return
-    setSelected(i);if(i===questions[qIdx].correctIdx)setScore(s=>s+1)
-    setTimeout(()=>{if(qIdx+1>=questions.length){clearSession();setDone(true)}else{setQIdx(x=>x+1);setSelected(null)}},1000)
-  },[selected,done,qIdx,questions])
+    if(done||qIdx>=questions.length||answers[qIdx]!==null)return
+    const next=[...answers];next[qIdx]=i;setAnswers(next)
+  },[done,qIdx,questions,answers])
 
   useEffect(()=>{
     if(phase!=='quiz')return
     const h=e=>{
       if(e.key==='Escape'){clearSession();setPhase('settings');return}
-      const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)
+      if(e.key==='ArrowRight'){e.preventDefault();setQIdx(x=>Math.min(x+1,questions.length-1))}
+      else if(e.key==='ArrowLeft'){e.preventDefault();setQIdx(x=>Math.max(x-1,0))}
+      else{const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)}
     }
     window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)
-  },[answer,phase])
+  },[answer,phase,questions.length])
 
   // Settings keyboard
   const skGroupDefs=[
@@ -377,16 +377,21 @@ export default function Allergieausweise({onBack}){
   }
 
   // ── Done ──
-  if(done)return(
-    <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
-      <BackBtn onBack={()=>{clearSession();onBack()}}/>
-      <ResultScreen correct={score} total={questions.length} onRetry={()=>{clearSession();setPhase('settings')}} onBack={()=>{clearSession();onBack()}}/>
-    </div>
-  )
+  if(done){
+    const score=answers.reduce((s,a,i)=>s+(a===questions[i]?.correctIdx?1:0),0)
+    return(
+      <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
+        <BackBtn onBack={()=>{clearSession();onBack()}}/>
+        <ResultScreen correct={score} total={questions.length} onRetry={()=>{clearSession();setPhase('settings')}} onBack={()=>{clearSession();onBack()}}/>
+      </div>
+    )
+  }
 
   // ── Quiz ──
   const q=questions[qIdx];if(!q)return null
-  const getState=i=>selected===null?'idle':i===q.correctIdx?'correct':i===selected?'wrong':'idle'
+  const myAns=answers[qIdx]
+  const getState=i=>myAns===null?'idle':i===q.correctIdx?'correct':i===myAns?'wrong':'idle'
+  const allDone=answers.every(a=>a!==null)
   return(
     <div style={{maxWidth:720,margin:'0 auto',padding:'24px 20px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
@@ -394,9 +399,12 @@ export default function Allergieausweise({onBack}){
           <button onClick={()=>{clearSession();setPhase('settings')}} style={{background:'none',border:`1px solid ${T.border}`,borderRadius:8,color:T.muted,cursor:'pointer',padding:'6px 14px',fontSize:13}}>← Zurück</button>
           <div style={{color:T.green,fontSize:20,fontWeight:'bold'}}>Abfrage</div>
         </div>
-        <span style={{color:T.muted,fontSize:14}}>{qIdx+1} / {questions.length}</span>
+        <div style={{display:'flex',gap:12,alignItems:'center'}}>
+          <span style={{color:T.muted,fontSize:14}}>{qIdx+1} / {questions.length}</span>
+          {allDone&&<button onClick={()=>{clearSession();setDone(true)}} style={{background:T.green,border:'none',borderRadius:8,color:'#000',cursor:'pointer',padding:'6px 14px',fontSize:13,fontWeight:'bold'}}>Ergebnis</button>}
+        </div>
       </div>
-      <ProgressBar current={qIdx+1} total={questions.length} color={T.green}/>
+      <NavDots questions={questions} answers={answers} current={qIdx} onGo={i=>setQIdx(i)} color={T.green}/>
       <Card style={{marginBottom:16}}>
         {q.showAvatar&&<div style={{display:'flex',justifyContent:'center',marginBottom:16}}><div style={{background:T.surf2,borderRadius:16,padding:8,overflow:'hidden',width:116,height:116,display:'flex',alignItems:'center',justifyContent:'center'}}><Avatar card={q.card} size={100}/></div></div>}
         <div style={{fontSize:17,color:T.text}}>{q.question}</div>
@@ -404,6 +412,7 @@ export default function Allergieausweise({onBack}){
       <Card>
         {q.opts.map((o,i)=>(<OptionBtn key={i} label={OPTS[i]} state={getState(i)} onClick={()=>answer(i)} text={o==='keine'?'Keine Antwort ist richtig.':o}/>))}
         <KeyHint/>
+        <div style={{color:T.muted,fontSize:11,marginTop:6}}>← → blättern</div>
       </Card>
     </div>
   )
@@ -411,8 +420,14 @@ export default function Allergieausweise({onBack}){
 
 // Helper: polls every 10s to re-render learn_done when quiz becomes ready
 function useQuizReadyCheck({onReady}){
+  const beeped=useRef(false)
   useEffect(()=>{
-    const id=setInterval(()=>{ if(isQuizReady()) onReady() },10000)
+    const id=setInterval(()=>{
+      if(isQuizReady()){
+        if(!beeped.current){playBeep();beeped.current=true}
+        onReady()
+      }
+    },10000)
     return()=>clearInterval(id)
   },[])
   return null
