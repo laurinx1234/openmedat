@@ -8,14 +8,13 @@ import { navigate } from '../router.js'
 const LAENDER=["Österreich","Deutschland","Schweiz","Frankreich","Italien","Spanien","Portugal","Schweden","Norwegen","Finnland","Dänemark","Polen","Tschechien","Ungarn","Rumänien","Kroatien","Serbien","Slowenien","Slowakei","Bulgarien","Griechenland","Türkei","Russland","Ukraine","Litauen","Lettland","Estland","Georgien","Armenien","Japan","China","Indien","Pakistan","Iran","Irak","Israel","Ägypten","Marokko","Tunesien","Kenia","Südafrika","Nigeria","Brasilien","Argentinien","Chile","Peru","Mexiko","Kuba","USA","Kanada","Australien","Neuseeland","Mongolei","Namibia","Jordanien","Senegal","Bolivien","Ecuador","Costa Rica"]
 const ALLERGENE=["Erdnüsse","Milch","Eier","Weizen","Soja","Nüsse","Fisch","Krebstiere","Sellerie","Senf","Sesam","Lupinen","Latex","Jod","Penicillin","Ibuprofen","Aspirin","Codein","ASS","Cephalosporine","Tetracycline","Sulfonamide","Metronidazol","Clindamycin","Ciprofloxacin","Amoxicillin","Diclofenac","Morphin","Cortison","Metformin","Heparin","Bienenstiche","Wespen","Katzenhaare","Hundespeichel","Vogelfedern","Hausstaubmilben","Schimmel","Birke","Gräser","Holz","Sand","Kaffee","Schokolade","Gold","Aluminium","Plastik","Beton","Farbe","Leder","Wolle","Papier","Parfüm","Sonnenlicht","Mondlicht","Salzwasser","Delfine","Schnee","Gummi"]
 const BLUTGRUPPEN=["A","B","AB","0"]
-const SYLLABLES=["BA","BE","BI","BO","BU","DA","DE","DI","DO","GA","GE","GI","GO","HA","HE","HI","HO","KA","KE","KI","KO","LA","LE","LI","LO","MA","ME","MI","MO","MU","NA","NE","NI","NO","PA","PE","PI","PO","RA","RE","RI","RO","RU","SA","SE","SI","SO","TA","TE","TI","TO","VA","VE","VI","VO","ZA","ZI","ZO","WA","FI","FO","RU"]
-const ENDINGS=["","N","T","K","S","L","R","M","X","N"]
+
 const MONTHS=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"]
 const DAYS=[31,28,31,30,31,30,31,31,30,31,30,31]
 const SKINS=['#FDDCB0','#F0C27F','#D4A574','#C68642','#8D5524']
 const HAIRS=['#1A1A1A','#3D2B1F','#8B6347','#C19A6B','#F0E0A0','#A52A2A','#808080','#2C4A7C']
 
-function genName(used){for(let _=0;_<300;_++){const n=rnd(1,2);let nm='';for(let i=0;i<n;i++)nm+=pick(SYLLABLES);nm+=pick(ENDINGS);if(nm.length>=3&&!used.has(nm)){used.add(nm);return nm}}return`P${Math.random().toString(36).slice(2,6).toUpperCase()}`}
+function genName(used){const LEN=rnd(5,7);for(let _=0;_<300;_++){let nm='';for(let i=0;i<LEN;i++)nm+=String.fromCharCode(65+rnd(0,25));if(!used.has(nm)){used.add(nm);return nm}}return Math.random().toString(36).slice(2,2+LEN).toUpperCase()}
 function genBirthday(){const m=rnd(0,11);return`${rnd(1,DAYS[m])}. ${MONTHS[m]}`}
 
 export function genCardPool(){
@@ -179,7 +178,7 @@ export default function Allergieausweise({onBack}){
     if(s&&isQuizReady())return'quiz_pending'
     return'settings'
   })
-  const[settings,setSettings]=useState({cardCount:4,learnMin:4,quizDelayMin:15,qCount:10})
+  const[settings,setSettings]=useState({cardCount:8,learnMin:8,quizDelayMin:35,qCount:25})
   const[allCards,setAllCards]=useState([])
   const[shownCards,setShownCards]=useState([])
   const[learnTimer,resetLearn]=useTimer(0)
@@ -204,6 +203,7 @@ export default function Allergieausweise({onBack}){
   },[])
 
   async function startLearn(){
+    if('Notification' in window&&Notification.permission==='default'){Notification.requestPermission()}
     setPhase('loading')
     const pool=genCardPool()
     const photos=await fetchPhotos(8)
@@ -424,7 +424,9 @@ function useQuizReadyCheck({onReady}){
   useEffect(()=>{
     const id=setInterval(()=>{
       if(isQuizReady()){
-        if(!beeped.current){playBeep();beeped.current=true}
+        if(!beeped.current){playBeep();beeped.current=true
+          if('Notification' in window&&Notification.permission==='granted'){new Notification('Bereit zur Abfrage',{body:'Die Wartezeit ist abgelaufen. Du kannst jetzt die Fragen beantworten.'})}
+        }
         onReady()
       }
     },10000)

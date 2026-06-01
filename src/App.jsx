@@ -51,7 +51,9 @@ function QuizBadge() {
   const session = getSession()
   if (!session) { beeped.current = false; return null }
   const ready = isQuizReady()
-  if (ready && !beeped.current) { playBeep(); beeped.current = true }
+  if (ready && !beeped.current) { playBeep(); beeped.current = true
+    if('Notification' in window&&Notification.permission==='granted'){new Notification('Bereit zur Abfrage',{body:'Die Wartezeit ist abgelaufen. Du kannst jetzt die Fragen beantworten.'})}
+  }
   const mins = minutesUntilQuiz()
   return (
     <div onClick={() => navigate('/allergieausweise')}
