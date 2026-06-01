@@ -205,6 +205,11 @@ export function NavDots({ questions, answers, current, onGo, color }) {
   )
 }
 
+export function ScoreBar({ score, total, color }) {
+  const pct = total > 0 ? Math.round(score / total * 100) : 0
+  return <span style={{ color, fontSize: 14 }}>{score}/{total} <span style={{ color: T.muted }}>({pct}%)</span></span>
+}
+
 export function playBeep() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)()

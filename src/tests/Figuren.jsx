@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, ResultScreen, KeyHint, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, ProgressBar, ResultScreen, KeyHint, ScoreBar, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
 
 // ─── Geometry ──────────────────────────────────────────────────────────────────
-function regPoly(n, cx=50, cy=50, r=44) {
+export function regPoly(n, cx=50, cy=50, r=44) {
   return Array.from({length:n}, (_,i) => {
     const a = -Math.PI/2 + 2*Math.PI*i/n
     return [cx + r*Math.cos(a), cy + r*Math.sin(a)]
@@ -34,7 +34,7 @@ function polyArea(pts) {
   return Math.abs(a)/2
 }
 
-function ptsToPath(pts) {
+export function ptsToPath(pts) {
   return pts.map((p,i) => `${i?'L':'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ') + ' Z'
 }
 
@@ -48,7 +48,7 @@ function normPts(pts, vb=100, pad=8) {
   return pts.map(([x,y]) => [x*sc+oX, y*sc+oY])
 }
 
-function arcPath(cx, cy, r, a0, a1) {
+export function arcPath(cx, cy, r, a0, a1) {
   const sw = ((a1-a0)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)
   if (sw >= 2*Math.PI-0.001) return null
   const x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0)
@@ -156,7 +156,7 @@ const WINKEL_DATA = [
   {sides:8, label:'Achteck',   type:'spitze', deg:90},
 ]
 
-const PC = ['#89b4fa','#cba6f7','#94e2d5','#a6e3a1','#f9e2af','#fab387','#f38ba8','#f5c2e7','#89dceb']
+export const PC = ['#89b4fa','#cba6f7','#94e2d5','#a6e3a1','#f9e2af','#fab387','#f38ba8','#f5c2e7','#89dceb']
 
 // ─── Assembled view ────────────────────────────────────────────────────────────
 function AssembledView({ task, size=200 }) {
@@ -267,11 +267,6 @@ export function makeWinkelTask(prevDeg) {
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
-function ScoreBar({ score, total, color }) {
-  const pct = total > 0 ? Math.round(score/total*100) : 0
-  return <span style={{color,fontSize:14}}>{score}/{total} <span style={{color:T.muted}}>({pct}%)</span></span>
-}
-
 export default function Figuren({ onBack }) {
   const [mode, setMode] = useState('settings')
   const [count, setCount] = useState(15)
@@ -438,7 +433,7 @@ export default function Figuren({ onBack }) {
               <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:6,alignItems:'center'}}>
                 <span style={{color:T.muted,fontSize:10,minWidth:90}}>Innenwinkel:</span>
                 {wInnen.map(w=>(
-                  <span key={w.deg} style={{fontSize:11,padding:'3px 9px',borderRadius:6,background:w.deg===q.deg?`${T.teal}22`:T.base,color:w.deg===q.deg?T.teal:T.muted,border:`1px solid ${w.deg===q.deg?T.teal:T.border}`}}>
+                  <span key={w.deg} style={{fontSize:11,padding:'3px 9px',borderRadius:6,background:w.deg===q.deg?`${T.teal}22`:T.bg,color:w.deg===q.deg?T.teal:T.muted,border:`1px solid ${w.deg===q.deg?T.teal:T.border}`}}>
                     {w.label}: {w.deg}°
                   </span>
                 ))}
@@ -446,7 +441,7 @@ export default function Figuren({ onBack }) {
               <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
                 <span style={{color:T.muted,fontSize:10,minWidth:90}}>Spitzenwinkel:</span>
                 {wSpitze.map(w=>(
-                  <span key={w.deg} style={{fontSize:11,padding:'3px 9px',borderRadius:6,background:w.deg===q.deg?`${T.teal}22`:T.base,color:w.deg===q.deg?T.teal:T.muted,border:`1px solid ${w.deg===q.deg?T.teal:T.border}`}}>
+                  <span key={w.deg} style={{fontSize:11,padding:'3px 9px',borderRadius:6,background:w.deg===q.deg?`${T.teal}22`:T.bg,color:w.deg===q.deg?T.teal:T.muted,border:`1px solid ${w.deg===q.deg?T.teal:T.border}`}}>
                     {w.label}: {w.deg}°
                   </span>
                 ))}

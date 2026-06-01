@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, ScoreBar, useTimer, useSettingsKeyboard, rnd, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
 
 const safe=s=>s.every(x=>x>-999999&&x<999999)
 const ch=arr=>arr[Math.floor(Math.random()*arr.length)]
@@ -24,8 +24,6 @@ function plausOff(v){const m=Math.max(1,Math.abs(v));if(m<20)return ch([-6,-5,-4
 function makeChoices(a1,a2,inject){const correct=`${a1}|${a2}`,used=new Set([correct]);const tryPair=(f1,f2)=>{for(let _=0;_<200;_++){const v1=f1!==null?f1:a1+plausOff(a1),v2=f2!==null?f2:a2+plausOff(a2),k=`${v1}|${v2}`;if(!used.has(k)){used.add(k);return[v1,v2]}}return null};const dist=[tryPair(a1,null),tryPair(null,a2),tryPair(null,null)].filter(Boolean);while(dist.length<(inject?4:3)){const p=tryPair(null,null);if(p)dist.push(p)};const vis=inject?dist.slice(0,4):[...dist.slice(0,3),[a1,a2]];return[...shuffle(vis),'keine']}
 
 export function makeTask(){const{seq,label}=ch(GENS)();const[a1,a2]=[seq[7],seq[8]];const inject=Math.random()<0.20;const choices=makeChoices(a1,a2,inject);const ci=inject?4:choices.findIndex(c=>Array.isArray(c)&&c[0]===a1&&c[1]===a2);return{visible:seq.slice(0,7),answer:[a1,a2],choices,correctIdx:ci,label}}
-
-function ScoreBar({score,total,color}){const pct=total>0?Math.round(score/total*100):0;return<span style={{color,fontSize:14}}>{score}/{total} <span style={{color:T.muted}}>({pct}%)</span></span>}
 
 export default function Zahlenfolgen({onBack}){
   const[mode,setMode]=useState('settings')

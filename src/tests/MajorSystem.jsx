@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, OptionBtn, ResultScreen, KeyHint, useSettingsKeyboard, rnd, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, OptionBtn, ResultScreen, KeyHint, ScoreBar, useSettingsKeyboard, rnd, OPTS, KEYS } from '../components/Shared.jsx'
 
 const MAJOR = [
   null,
@@ -66,10 +66,6 @@ export function makeDigitTask(dir) {
   }
 }
 
-function ScoreBar({ score, total, color }) {
-  const pct = total > 0 ? Math.round(score / total * 100) : 0
-  return <span style={{ color, fontSize: 14 }}>{score}/{total} <span style={{ color: T.muted }}>({pct}%)</span></span>
-}
 
 const CATEGORIES = [
   { v: 'numbers', l: 'Zahlen 1–100' },

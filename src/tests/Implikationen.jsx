@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, ScoreBar, useTimer, useSettingsKeyboard, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
 
 const NOUNS=["Hunde","Katzen","Vögel","Fische","Elefanten","Löwen","Bären","Wölfe","Pferde","Schlangen","Adler","Delphine","Krokodile","Papageien","Tiger","Gorillas","Flamingos","Pinguine","Wale","Haie","Ärzte","Lehrer","Kinder","Studenten","Soldaten","Musiker","Maler","Sportler","Künstler","Richter","Chirurgen","Ingenieure","Bankräuber","Pianisten","Tänzer","Sänger","Wissenschaftler","Autos","Bücher","Bäume","Steine","Pflanzen","Roboter","Maschinen","Schiffe","Flugzeuge","Computer","Pilze","Algen","Bakterien","Insekten","Reptilien","Lebewesen","Objekte","Kristalle","Planeten","Rosen","Tulpen","Orchideen","Kakteen","Farne","Korallen","Häuser","Türme","Burgen","Kathedralen","Pyramiden","Brücken","Gauner","Einbrecher","Detektive","Spione","Piraten","Ritter","Zauberer","Drachen"]
 
@@ -46,8 +46,6 @@ export function makeTask(){
   const options=[`Alle ${S} sind ${C}.`,`Einige ${S} sind ${C}.`,`Alle ${S} sind keine ${C}.`,`Einige ${S} sind keine ${C}.`,'Keine Schlussfolgerung ist richtig.']
   return{p1:mod.p1(S,M,C),p2:mod.p2(S,M,C),S,C,options,correctIdx:{alle:0,einige:1,kein:2,einige_nicht:3,keine:4}[concl],modusName:isValid?mod.name:`Ungültig (${mod.name})`}
 }
-
-function ScoreBar({score,total,color}){const pct=total>0?Math.round(score/total*100):0;return<span style={{color,fontSize:14}}>{score}/{total} <span style={{color:T.muted}}>({pct}%)</span></span>}
 
 export default function Implikationen({onBack}){
   const[mode,setMode]=useState('settings')

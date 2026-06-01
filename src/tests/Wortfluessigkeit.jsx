@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, ScoreBar, useTimer, useSettingsKeyboard, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
 import { UNIQUE_WORDS } from '../data/words.js'
 
 const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
@@ -19,8 +19,6 @@ export function makeTask(){
   }
   return{word,display,opts:[...opts,'keine'],correctIdx}
 }
-
-function ScoreBar({score,total,color}){const pct=total>0?Math.round(score/total*100):0;return<span style={{color,fontSize:14}}>{score}/{total} <span style={{color:T.muted}}>({pct}%)</span></span>}
 
 function Buchstabenwolke({letters}){
   const n=letters.length

@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { T } from '../theme.js'
 import { Card, BackBtn, TimerBadge, NavDots, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
 import { makeTask as makeZahlen } from './Zahlenfolgen.jsx'
 import { makeTask as makeWort } from './Wortfluessigkeit.jsx'
 import { makeTask as makeImpl } from './Implikationen.jsx'
-import { makeTask as makeFigur } from './Figuren.jsx'
-import { genCardPool, fetchPhotos, makeQuestion, AusweisCard } from './Allergieausweise.jsx'
+import { makeTask as makeFigur, ptsToPath, arcPath, regPoly, PC } from './Figuren.jsx'
+import { genCardPool, fetchPhotos, makeQuestion, AusweisCard, Avatar } from './Allergieausweise.jsx'
 
 // ─── Simulation config ────────────────────────────────────────────────────────
 const PHASES = [
@@ -22,72 +22,6 @@ const WEIGHTS = { figuren:8, zahlen:5.3, wort:8, allerg:13.4, impl:5.3 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function pct(n,d){return d>0?Math.round(n/d*100):0}
-
-// ─── Generic question screen with skip/nav ────────────────────────────────────
-function QuestionScreen({phase,questions,answers,setAnswers,current,setCurrent,color,renderQuestion,renderOptions}){
-  const unanswered=answers.filter(a=>a===null).length
-  function answer(i){
-    if(answers[current]!==null)return // already answered
-    const next=[...answers];next[current]=i;setAnswers(next)
-    // Auto-advance to next unanswered
-    for(let j=current+1;j<questions.length;j++){if(next[j]===null){setCurrent(j);return}}
-    for(let j=0;j<current;j++){if(next[j]===null){setCurrent(j);return}}
-  }
-  useEffect(()=>{
-    const h=e=>{
-      const idx=KEYS.indexOf(e.key.toLowerCase())
-      if(idx>=0&&idx<5)answer(idx)
-      if(e.key==='ArrowRight'){const nx=current+1<questions.length?current+1:current;setCurrent(nx)}
-      if(e.key==='ArrowLeft'){const nx=current-1>=0?current-1:current;setCurrent(nx)}
-    }
-    window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)
-  },[current,answers])
-
-  const q=questions[current];if(!q)return null
-  const myAnswer=answers[current]
-  const getState=i=>myAnswer===null?'idle':i===q.correctIdx?'correct':i===myAnswer?'wrong':'idle'
-  // Note: in sim mode we show state only if answered (to allow reviewing)
-  const stateForSim=i=>myAnswer===null?'idle':i===myAnswer?'selected':'idle'
-
-  return(
-    <div>
-      <NavDots questions={questions} answers={answers} current={current} onGo={setCurrent} color={color}/>
-      <div style={{color:T.muted,fontSize:12,marginBottom:12}}>
-        {unanswered} Fragen noch offen · ← → zum Blättern · A–G zum Antworten
-      </div>
-      {renderQuestion(q)}
-      <Card style={{marginTop:12}}>
-        {q.opts?q.opts.map((o,i)=>(
-          <button key={i} onClick={()=>answer(i)} style={{
-            display:'flex',alignItems:'flex-start',gap:12,width:'100%',
-            background:myAnswer===i?`${color}22`:T.surf2,
-            border:`1px solid ${myAnswer===i?color:T.border}`,
-            borderRadius:10,color:T.text,cursor:myAnswer===null?'pointer':'default',
-            padding:'12px 16px',fontSize:14,textAlign:'left',marginBottom:8,transition:'all 0.15s'
-          }}>
-            <span style={{color:T.yellow,minWidth:22,fontWeight:'bold',flexShrink:0}}>{OPTS[i]}</span>
-            <span>{renderOptions?renderOptions(o,i):o==='keine'?'Keine Option ist richtig.':o}</span>
-            {myAnswer===i&&<span style={{color:color,marginLeft:'auto'}}>✓</span>}
-          </button>
-        )):null}
-        {!q.opts&&q.choices&&q.choices.map((c,i)=>(
-          <button key={i} onClick={()=>answer(i)} style={{
-            display:'flex',alignItems:'flex-start',gap:12,width:'100%',
-            background:myAnswer===i?`${color}22`:T.surf2,
-            border:`1px solid ${myAnswer===i?color:T.border}`,
-            borderRadius:10,color:T.text,cursor:myAnswer===null?'pointer':'default',
-            padding:'12px 16px',fontSize:14,textAlign:'left',marginBottom:8,transition:'all 0.15s'
-          }}>
-            <span style={{color:T.yellow,minWidth:22,fontWeight:'bold',flexShrink:0}}>{OPTS[i]}</span>
-            <span>{c==='keine'?'Keine Option ist richtig.':Array.isArray(c)?`${c[0]}  ,  ${c[1]}`:c}</span>
-            {myAnswer===i&&<span style={{color:color,marginLeft:'auto'}}>✓</span>}
-          </button>
-        ))}
-        <div style={{color:T.muted,fontSize:11,marginTop:8}}>← → blättern · A S D F G antworten</div>
-      </Card>
-    </div>
-  )
-}
 
 // ─── Results ──────────────────────────────────────────────────────────────────
 function getOptionText(q,i){
@@ -249,16 +183,9 @@ function ResultsScreen({scores,onBack,reviewData}){
   )
 }
 
-// ─── Figuren piece renderers (inlined from Figuren.jsx) ───────────────────────
-function ptsToPath(pts){return pts.map((p,i)=>`${i?'L':'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')+' Z'}
-function arcPath(cx,cy,r,a0,a1){const sw=((a1-a0)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);if(sw>=2*Math.PI-0.001)return null;const x0=cx+r*Math.cos(a0),y0=cy+r*Math.sin(a0),x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1);return`M ${cx},${cy} L ${x0.toFixed(2)},${y0.toFixed(2)} A ${r},${r} 0 ${sw>Math.PI?1:0},1 ${x1.toFixed(2)},${y1.toFixed(2)} Z`}
-const PC=['#89b4fa','#cba6f7','#94e2d5','#a6e3a1','#f9e2af','#fab387','#f38ba8','#f5c2e7']
+// ─── Figuren piece renderers (using geometry helpers from Figuren.jsx) ────────
 function FigPieceTile({data,rotation,idx}){const color=PC[idx%9];return<svg viewBox="0 0 100 100" width="90" height="90"><g transform={`rotate(${rotation},50,50)`}><path d={ptsToPath(data)} fill={`${color}35`} stroke={color} strokeWidth="1.2" strokeLinejoin="round"/></g></svg>}
-function regPolyS(n,cx,cy,r){return Array.from({length:n},(_,i)=>{const a=-Math.PI/2+2*Math.PI*i/n;return[cx+r*Math.cos(a),cy+r*Math.sin(a)]})}
-function FigAnswerSVG({shape,size=60}){const s=size,cx=s/2,cy=s/2,r=s*0.42;if(shape.isPlaceholder){if(shape.id==='ph_tri')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><polygon points={`${cx},${s*0.08} ${s*0.92},${s*0.88} ${s*0.08},${s*0.88}`} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>;if(shape.id==='ph_sq')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><rect x={s*0.1} y={s*0.1} width={s*0.8} height={s*0.8} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>;if(shape.id==='ph_rect')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><rect x={s*0.06} y={s*0.22} width={s*0.88} height={s*0.55} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>;return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><polygon points={`${s*0.28},${s*0.25} ${s*0.72},${s*0.25} ${s*0.9},${s*0.78} ${s*0.1},${s*0.78}`} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>}if(shape.id==='c4')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><circle cx={cx} cy={cy} r={r} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>;if(shape.family==='circle'){const a0=-Math.PI/2,path=arcPath(cx,cy,r,a0,a0+shape.sweep);return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><path d={path} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2" strokeLinejoin="round"/></svg>}const pts=regPolyS(shape.sides,cx,cy,r);return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><path d={ptsToPath(pts)} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2" strokeLinejoin="round"/></svg>}
-
-// ─── Avatar inlined ───────────────────────────────────────────────────────────
-function Avatar({card,size=60}){const[err,setErr]=useState(false);if(card.photoUrl&&!err)return<img src={card.photoUrl} width={size} height={size} alt={card.name} style={{borderRadius:'50%',objectFit:'cover',objectPosition:'center top',display:'block'}} onError={()=>setErr(true)}/>;const{skin,hair,glasses}=card;return<svg width={size} height={size} viewBox="0 0 80 80" style={{display:'block'}}><ellipse cx="40" cy="26" rx="24" ry="22" fill={hair}/><rect x="32" y="62" width="16" height="14" rx="4" fill={skin}/><ellipse cx="40" cy="44" rx="21" ry="26" fill={skin}/><ellipse cx="40" cy="22" rx="22" ry="16" fill={skin}/><ellipse cx="16" cy="44" rx="6" ry="14" fill={hair}/><ellipse cx="64" cy="44" rx="6" ry="14" fill={hair}/><ellipse cx="40" cy="14" rx="21" ry="14" fill={hair}/><ellipse cx="29" cy="40" rx="6" ry="4" fill="white"/><ellipse cx="51" cy="40" rx="6" ry="4" fill="white"/><circle cx="29" cy="40" r="2.5" fill="#222"/><circle cx="51" cy="40" r="2.5" fill="#222"/><path d="M37 50 Q40 53 43 50" fill="none" stroke="#b07050" strokeWidth="1.2"/><path d="M33 57 Q40 62 47 57" fill="none" stroke="#8B4E4E" strokeWidth="1.8" strokeLinecap="round"/></svg>}
+function FigAnswerSVG({shape,size=60}){const s=size,cx=s/2,cy=s/2,r=s*0.42;if(shape.isPlaceholder){if(shape.id==='ph_tri')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><polygon points={`${cx},${s*0.08} ${s*0.92},${s*0.88} ${s*0.08},${s*0.88}`} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>;if(shape.id==='ph_sq')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><rect x={s*0.1} y={s*0.1} width={s*0.8} height={s*0.8} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>;if(shape.id==='ph_rect')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><rect x={s*0.06} y={s*0.22} width={s*0.88} height={s*0.55} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>;return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><polygon points={`${s*0.28},${s*0.25} ${s*0.72},${s*0.25} ${s*0.9},${s*0.78} ${s*0.1},${s*0.78}`} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>}if(shape.id==='c4')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><circle cx={cx} cy={cy} r={r} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>;if(shape.family==='circle'){const a0=-Math.PI/2,path=arcPath(cx,cy,r,a0,a0+shape.sweep);return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><path d={path} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2" strokeLinejoin="round"/></svg>}const pts=regPoly(shape.sides,cx,cy,r);return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><path d={ptsToPath(pts)} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2" strokeLinejoin="round"/></svg>}
 
 // ─── Phase transition card ────────────────────────────────────────────────────
 function PhaseCard({phase,onStart,timeLeft}){

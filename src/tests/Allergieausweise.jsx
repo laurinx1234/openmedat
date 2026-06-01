@@ -38,7 +38,7 @@ export async function fetchPhotos(count=8){
   }catch{return Array.from({length:count},(_,i)=>`https://i.pravatar.cc/150?img=${i+10}`)}
 }
 
-function Avatar({card,size=80}){
+export function Avatar({card,size=80}){
   const[err,setErr]=useState(false)
   if(card.photoUrl&&!err)return<img src={card.photoUrl} width={size} height={size} alt={card.name} style={{borderRadius:'50%',objectFit:'cover',objectPosition:'center top',display:'block'}} onError={()=>setErr(true)}/>
   const{skin,hair,glasses}=card
@@ -96,12 +96,26 @@ const Q_TYPES=[
   // Geburtstag → Attribut
   {label:(c)=>`Wie heißt die Person, die am ${c.geburtstag} Geburtstag feiert?`,correct:(c)=>c.name,pool:(cs)=>cs.map(c=>c.name),av:false},
   {label:(c)=>`Welche Ausweisnummer hat die Person, die am ${c.geburtstag} Geburtstag feiert?`,correct:(c)=>c.ausweisnummer,pool:(cs)=>cs.map(c=>c.ausweisnummer),av:false},
+  {label:(c)=>`Welche Blutgruppe hat die Person, die am ${c.geburtstag} Geburtstag feiert?`,correct:(c)=>c.blutgruppe,pool:(cs)=>cs.map(c=>c.blutgruppe),av:false},
+  {label:(c)=>`Welche Allergien hat die Person, die am ${c.geburtstag} Geburtstag feiert?`,correct:(c)=>c.allergien,pool:(cs)=>cs.map(c=>c.allergien),av:false},
+  {label:(c)=>`Aus welchem Land stammt der Ausweis der Person, die am ${c.geburtstag} Geburtstag feiert?`,correct:(c)=>c.land,pool:(cs)=>cs.map(c=>c.land),av:false},
+  {label:(c)=>`Welche Beschreibung passt am besten zur Person, die am ${c.geburtstag} Geburtstag feiert?`,correct:(c)=>`Blutgruppe: ${c.blutgruppe}, Medikamente: ${c.medikamente}`,pool:(cs)=>cs.map(c=>`Blutgruppe: ${c.blutgruppe}, Medikamente: ${c.medikamente}`),av:false},
   // Allergie → Attribut
   {label:(c)=>`Wie heißt die Person mit der ${c.allergien} Allergie?`,correct:(c)=>c.name,pool:(cs)=>cs.map(c=>c.name),av:false},
   {label:(c)=>`Welche Ausweisnummer hat die Person mit der ${c.allergien} Allergie?`,correct:(c)=>c.ausweisnummer,pool:(cs)=>cs.map(c=>c.ausweisnummer),av:false},
+  {label:(c)=>`Welche Blutgruppe hat die Person mit der ${c.allergien} Allergie?`,correct:(c)=>c.blutgruppe,pool:(cs)=>cs.map(c=>c.blutgruppe),av:false},
+  {label:(c)=>`Wann hat die Person mit der ${c.allergien} Allergie Geburtstag?`,correct:(c)=>c.geburtstag,pool:(cs)=>cs.map(c=>c.geburtstag),av:false},
+  {label:(c)=>`Aus welchem Land stammt der Ausweis der Person mit der ${c.allergien} Allergie?`,correct:(c)=>c.land,pool:(cs)=>cs.map(c=>c.land),av:false},
+  {label:(c)=>`Welche Beschreibung passt am besten zur Person mit der ${c.allergien} Allergie?`,correct:(c)=>`Blutgruppe: ${c.blutgruppe}, Medikamente: ${c.medikamente}`,pool:(cs)=>cs.map(c=>`Blutgruppe: ${c.blutgruppe}, Medikamente: ${c.medikamente}`),av:false},
   // Land → Attribut
   {label:(c)=>`Wie heißt die Person, deren Ausweis aus ${c.land} stammt?`,correct:(c)=>c.name,pool:(cs)=>cs.map(c=>c.name),av:false},
   {label:(c)=>`Welche Ausweisnummer hat die Person, deren Ausweis aus ${c.land} stammt?`,correct:(c)=>c.ausweisnummer,pool:(cs)=>cs.map(c=>c.ausweisnummer),av:false},
+  {label:(c)=>`Welche Blutgruppe hat die Person, deren Ausweis aus ${c.land} stammt?`,correct:(c)=>c.blutgruppe,pool:(cs)=>cs.map(c=>c.blutgruppe),av:false},
+  {label:(c)=>`Welche Allergien hat die Person, deren Ausweis aus ${c.land} stammt?`,correct:(c)=>c.allergien,pool:(cs)=>cs.map(c=>c.allergien),av:false},
+  {label:(c)=>`Wann hat die Person Geburtstag, deren Ausweis aus ${c.land} stammt?`,correct:(c)=>c.geburtstag,pool:(cs)=>cs.map(c=>c.geburtstag),av:false},
+  {label:(c)=>`Welche Beschreibung passt am besten zur Person, deren Ausweis aus ${c.land} stammt?`,correct:(c)=>`Blutgruppe: ${c.blutgruppe}, Medikamente: ${c.medikamente}`,pool:(cs)=>cs.map(c=>`Blutgruppe: ${c.blutgruppe}, Medikamente: ${c.medikamente}`),av:false},
+  // Ausweis-Nr. → Geburtstag
+  {label:(c)=>`Wann hat die Person mit der Ausweisnummer ${c.ausweisnummer} Geburtstag?`,correct:(c)=>c.geburtstag,pool:(cs)=>cs.map(c=>c.geburtstag),av:false},
   // Stelle der Ausweisnummer (nur wenn eindeutig)
   {label:(c)=>`Wie heißt die Person mit der Zahl ${c.ausweisnummer[0]} an erster Stelle der Ausweisnummer?`,correct:(c)=>c.name,pool:(cs)=>cs.map(c=>c.name),av:false,check:(c,sh)=>sh.filter(s=>s.ausweisnummer[0]===c.ausweisnummer[0]).length===1},
   {label:(c)=>`Wie heißt die Person mit der Zahl ${c.ausweisnummer[4]} an letzter Stelle der Ausweisnummer?`,correct:(c)=>c.name,pool:(cs)=>cs.map(c=>c.name),av:false,check:(c,sh)=>sh.filter(s=>s.ausweisnummer[4]===c.ausweisnummer[4]).length===1},
