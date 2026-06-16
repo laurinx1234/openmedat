@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, ResultScreen, KeyHint, ScoreBar, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, ProgressBar, ResultScreen, KeyHint, ScoreBar, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS, saveStat } from '../components/Shared.jsx'
 
 // ─── Geometry ──────────────────────────────────────────────────────────────────
 export function regPoly(n, cx=50, cy=50, r=44) {
@@ -89,13 +89,31 @@ function applyCutToPiece(pieces, targetIdx, totalArea, angle, offset) {
   return null
 }
 
+// 2-segment cut: cuts a piece, then cuts one of the resulting pieces at a different angle
+function applyDoubleCut(pieces, targetIdx, totalArea) {
+  const angle1 = Math.random() * Math.PI
+  const offset1 = Math.random() * 1.2 - 0.6
+  const result1 = applyCutToPiece(pieces, targetIdx, totalArea, angle1, offset1)
+  if (!result1) return null
+  const areaA = polyArea(result1[targetIdx])
+  const areaB = polyArea(result1[targetIdx + 1])
+  const secondTarget = areaA >= areaB ? targetIdx : targetIdx + 1
+  const angle2 = angle1 + (Math.random() * 0.55 + 0.5) * (Math.random() < 0.5 ? 1 : -1)
+  const offset2 = Math.random() * 1.0 - 0.5
+  const result2 = applyCutToPiece(result1, secondTarget, totalArea, angle2, offset2)
+  return result2 || result1
+}
+
 function genPolyPieces(sides) {
   const poly = regPoly(sides)
   const totalArea = polyArea(poly)
   let pieces = [poly]
-  for (let cut = 0; cut < rnd(4,7); cut++) {
+  for (let cut = 0; cut < rnd(5,9); cut++) {
     if (pieces.length >= 9) break
-    const result = applyCutToPiece(pieces, pickByArea(pieces), totalArea, Math.random()*Math.PI, Math.random()*1.2-0.6)
+    const useDouble = Math.random() < 0.3
+    const result = useDouble
+      ? applyDoubleCut(pieces, pickByArea(pieces), totalArea)
+      : applyCutToPiece(pieces, pickByArea(pieces), totalArea, Math.random()*Math.PI, Math.random()*1.2-0.6)
     if (result) pieces = result
   }
   const raw = pieces.filter(p => p.length >= 3)
@@ -109,11 +127,14 @@ function genCircPieces(sweep) {
     ? Array.from({length:64}, (_,i) => { const a=a0+2*Math.PI*i/64; return [cx+r*Math.cos(a),cy+r*Math.sin(a)] })
     : [...Array.from({length:48}, (_,i) => { const a=a0+sweep*i/47; return [cx+r*Math.cos(a),cy+r*Math.sin(a)] }), [cx,cy]]
   const totalArea = polyArea(arcPoly)
-  const numCuts = sweep <= Math.PI*0.6 ? rnd(1,2) : rnd(2,4)
+  const numCuts = sweep <= Math.PI*0.6 ? rnd(2,3) : rnd(3,5)
   let pieces = [arcPoly]
   for (let cut = 0; cut < numCuts; cut++) {
     if (pieces.length >= 6) break
-    const result = applyCutToPiece(pieces, pickByArea(pieces), totalArea, Math.random()*Math.PI, Math.random()*1.0-0.5)
+    const useDouble = Math.random() < 0.3
+    const result = useDouble
+      ? applyDoubleCut(pieces, pickByArea(pieces), totalArea)
+      : applyCutToPiece(pieces, pickByArea(pieces), totalArea, Math.random()*Math.PI, Math.random()*1.0-0.5)
     if (result) pieces = result
   }
   const raw = pieces.filter(p => p.length >= 3)
@@ -307,11 +328,14 @@ export default function Figuren({ onBack }) {
 
   function startGame() { setScore(0); setTotal(0); setDone(false); lastWinkelDeg.current = null; newQ(count, quizType); setMode('game') }
 
+  const advanceRef = useRef(null)
+
   function answer(i) {
     if (selected !== null) return
     const correct = i === question.correctIdx
     setSelected(i); if (correct) setScore(s=>s+1); setTotal(t=>t+1)
-    setTimeout(() => { setShowFb(true); setTimeout(() => setFbReady(true), 200) }, 80)
+    if (endless) setTimeout(() => { setShowFb(true); setTimeout(() => setFbReady(true), 200) }, 80)
+    else advanceRef.current = setTimeout(() => nextQ(), 300)
   }
 
   function nextQ() {
@@ -320,6 +344,8 @@ export default function Figuren({ onBack }) {
     if (!endless && rem <= 0) { setDone(true); return }
     newQ(rem)
   }
+
+  useEffect(() => { if (done && !endless) saveStat('figuren', score, total) }, [done, endless, score, total])
 
   useEffect(() => {
     if (fbReady) {
@@ -332,11 +358,12 @@ export default function Figuren({ onBack }) {
     if (!showFb) {
       const h = e => {
         if (e.key === 'Escape') { endless?setDone(true):setMode('settings'); return }
+        if (!endless && selected !== null) { clearTimeout(advanceRef.current); nextQ(); return }
         const i=KEYS.indexOf(e.key.toLowerCase()); if(i>=0&&i<5) answer(i)
       }
       window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h)
     }
-  }, [answer, showFb, fbReady, endless])
+  }, [answer, showFb, fbReady, endless, selected])
 
   const skRows=[
     [{action:()=>setCount(15)},{action:()=>setCount(0)}],
@@ -417,8 +444,8 @@ export default function Figuren({ onBack }) {
             {selected!==null && i===selected && i!==q.correctIdx && <span style={{color:T.red,marginLeft:'auto'}}>✗</span>}
           </button>
         ))}
-        {!showFb && <KeyHint/>}
-        {showFb && (
+        {(!showFb || !endless) && selected===null && <KeyHint/>}
+        {showFb && endless && (
           <div style={{marginTop:16,background:T.surf2,borderRadius:12,padding:'16px 20px'}}>
             <div style={{fontSize:14,marginBottom:6}}>
               <span style={{color:T.muted}}>Dieser Winkel ({q.deg}°) ist der {q.type === 'innen' ? 'Innenwinkel' : 'Spitzenwinkel'} eines </span>
@@ -484,8 +511,8 @@ export default function Figuren({ onBack }) {
             {selected!==null && i===selected && i!==q.correctIdx && <span style={{color:T.red,marginLeft:'auto'}}>✗</span>}
           </button>
         ))}
-        {!showFb && <KeyHint/>}
-        {showFb && (
+        {(!showFb || !endless) && selected===null && <KeyHint/>}
+        {showFb && endless && (
           <div style={{marginTop:16,background:T.surf2,borderRadius:12,padding:'16px 20px'}}>
             <div style={{color:T.muted,fontSize:12,marginBottom:12}}>
               {q.correctIdx === 4

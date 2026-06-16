@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { T } from './theme.js'
 import { navigate, useRoute } from './router.js'
 import { getSession, isQuizReady, minutesUntilQuiz } from './allergStore.js'
-import { playBeep } from './components/Shared.jsx'
+import { playBeep, getStats } from './components/Shared.jsx'
 import Zahlenfolgen from './tests/Zahlenfolgen.jsx'
 import Wortfluessigkeit from './tests/Wortfluessigkeit.jsx'
 import Implikationen from './tests/Implikationen.jsx'
@@ -96,6 +96,12 @@ function TestTile({ test, focused, onClick }) {
 export default function App() {
   const route = useRoute()
   const [focused, setFocused] = useState(0)
+  const [showStats, setShowStats] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  useEffect(() => {
+    if (!localStorage.getItem('openmedat_visited')) setShowOnboarding(true)
+  }, [])
 
   useEffect(() => {
     if (route === '/') return
@@ -129,6 +135,68 @@ export default function App() {
     )
   }
 
+  const TEST_IDS = ['zahlenfolgen','wortfluessigkeit','implikationen','allergieausweise','figuren','major-system']
+  const TEST_NAMES = { zahlenfolgen:'Zahlenfolgen', wortfluessigkeit:'Wortflüssigkeit', implikationen:'Implikationen', allergieausweise:'Allergieausweise', figuren:'Figuren', 'major-system':'Major-System' }
+  const TEST_COLORS = { zahlenfolgen:T.blue, wortfluessigkeit:T.mauve, implikationen:T.yellow, allergieausweise:T.green, figuren:T.teal, 'major-system':T.pink }
+
+  if (showStats) {
+    const allStats = getStats()
+    const byTest = {}
+    for (const t of TEST_IDS) byTest[t] = allStats.filter(s => s.test === t).slice(-10)
+    const hasAny = Object.values(byTest).some(a => a.length)
+
+    return (
+      <div style={{ minHeight:'100vh', background:T.bg, color:T.text }}>
+        <Feedback />
+        <div style={{ maxWidth:800, margin:'0 auto', padding:'48px 24px' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:32 }}>
+            <button onClick={() => setShowStats(false)}
+              style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:8, color:T.muted, cursor:'pointer', padding:'8px 16px', fontSize:13 }}>
+              ← Hauptmenü
+            </button>
+            <div style={{ fontSize:24, fontWeight:'bold' }}>📊 Statistik</div>
+          </div>
+          {!hasAny && (
+            <div style={{ color:T.muted, textAlign:'center', padding:'48px 0' }}>
+              Noch keine Statistiken vorhanden. Spiele einen Test im Nicht-Endlosmodus, um Ergebnisse zu speichern.
+            </div>
+          )}
+          {TEST_IDS.filter(t => byTest[t].length).map(t => {
+            const entries = byTest[t]
+            const avgPct = Math.round(entries.reduce((s,e) => s + e.correct/e.total*100, 0) / entries.length)
+            const col = TEST_COLORS[t]
+            return (
+              <div key={t} style={{ marginBottom:32 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:12 }}>
+                  <div style={{ color:col, fontSize:17, fontWeight:'bold' }}>{TEST_NAMES[t]}</div>
+                  <div style={{ color:T.muted, fontSize:13 }}>Ø <span style={{ color:col, fontWeight:'bold' }}>{avgPct}%</span> ({entries.length} Tests)</div>
+                </div>
+                <div style={{ background:T.surf, border:`1px solid ${T.border}`, borderRadius:12, overflow:'hidden' }}>
+                  {entries.slice().reverse().map((e, i) => {
+                    const pct = Math.round(e.correct / e.total * 100)
+                    const date = new Date(e.date).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'2-digit' })
+                    const time = new Date(e.date).toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit' })
+                    return (
+                      <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 16px', borderBottom:i<entries.length-1?`1px solid ${T.border}`:'none' }}>
+                        <div style={{ color:T.muted, fontSize:12, minWidth:80 }}>{date} {time}</div>
+                        <div style={{ flex:1, height:22, background:T.surf2, borderRadius:6, overflow:'hidden', position:'relative' }}>
+                          <div style={{ position:'absolute', left:0, top:0, bottom:0, width:`${pct}%`, background:`${col}44`, borderRadius:6 }}/>
+                          <div style={{ position:'absolute', left:0, top:0, bottom:0, width:`${pct}%`, background:col, borderRadius:6, maxWidth:'100%', opacity:0.35 }}/>
+                        </div>
+                        <div style={{ color:T.text, fontSize:13, fontWeight:'bold', minWidth:55, textAlign:'right' }}>{e.correct}/{e.total}</div>
+                        <div style={{ color:col, fontSize:13, fontWeight:'bold', minWidth:36, textAlign:'right' }}>{pct}%</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ minHeight:'100vh', background:T.bg, color:T.text }}>
       <Feedback />
@@ -139,6 +207,12 @@ export default function App() {
           <div style={{ fontSize:16, color:T.muted }}>Kognitive Fähigkeiten und Fertigkeiten — 8 Testmodule</div>
         </div>
         <QuizBadge/>
+        <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}>
+          <button onClick={() => setShowStats(true)}
+            style={{ background:T.surf, border:`1px solid ${T.border}`, borderRadius:10, color:T.muted, cursor:'pointer', padding:'10px 24px', fontSize:14 }}>
+            📊 Statistik
+          </button>
+        </div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(340px, 1fr))', gap:16, marginBottom:48 }}>
           {TESTS.map((t, i) => (
             <TestTile key={t.path} test={t} focused={focused===i}
@@ -153,6 +227,45 @@ export default function App() {
             openMedAT ist ein inoffizielles Hobbyprojekt und steht in keiner Verbindung zur Medizinischen Universität, dem MedAT oder dessen Veranstaltern. Alle Inhalte dienen ausschließlich der privaten Übung. Irrtümer und Fehler vorbehalten.
           </div>
         </div>
+        {showOnboarding && (
+          <div onClick={() => { localStorage.setItem('openmedat_visited','1'); setShowOnboarding(false) }}
+            style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}>
+            <div onClick={e => e.stopPropagation()}
+              style={{ background:T.surf, border:`1px solid ${T.border}`, borderRadius:16, padding:'36px 32px', maxWidth:520, width:'90%', maxHeight:'90vh', overflow:'auto' }}>
+              <div style={{ fontSize:22, fontWeight:'bold', color:T.text, marginBottom:8 }}>Willkommen bei openMedAT</div>
+              <div style={{ color:T.muted, fontSize:14, marginBottom:24 }}>Alles auf dieser Seite funktioniert mit der Tastatur.</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:16, marginBottom:28 }}>
+                <div>
+                  <div style={{ color:T.yellow, fontSize:13, fontWeight:'bold', marginBottom:4 }}>Hauptmenü</div>
+                  <div style={{ color:T.muted, fontSize:13, lineHeight:1.8 }}>
+                    <span style={{ color:T.yellow }}>↑ ↓ ← →</span> navigieren &nbsp;·&nbsp;
+                    <span style={{ color:T.yellow }}>Enter</span> öffnen &nbsp;·&nbsp;
+                    <span style={{ color:T.yellow }}>1–8</span> direkt auswählen
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color:T.yellow, fontSize:13, fontWeight:'bold', marginBottom:4 }}>In den Tests</div>
+                  <div style={{ color:T.muted, fontSize:13, lineHeight:1.8 }}>
+                    <span style={{ color:T.yellow }}>A · S · D · F · G</span> Antworten wählen &nbsp;·&nbsp;
+                    <span style={{ color:T.yellow }}>Esc</span> zurück/zum Hauptmenü
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color:T.yellow, fontSize:13, fontWeight:'bold', marginBottom:4 }}>Einstellungen vor dem Test</div>
+                  <div style={{ color:T.muted, fontSize:13, lineHeight:1.8 }}>
+                    <span style={{ color:T.yellow }}>↑ ↓</span> zwischen Zeilen wechseln &nbsp;·&nbsp;
+                    <span style={{ color:T.yellow }}>← →</span> Option wählen &nbsp;·&nbsp;
+                    <span style={{ color:T.yellow }}>Enter</span> bestätigen
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => { localStorage.setItem('openmedat_visited','1'); setShowOnboarding(false) }}
+                style={{ background:T.yellow, border:'none', borderRadius:10, color:'#000', cursor:'pointer', padding:'14px 36px', fontSize:16, fontWeight:'bold', width:'100%' }}>
+                Los geht's
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

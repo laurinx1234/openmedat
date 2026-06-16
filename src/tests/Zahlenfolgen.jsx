@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, ScoreBar, useTimer, useSettingsKeyboard, rnd, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, ScoreBar, useTimer, useSettingsKeyboard, rnd, shuffle, OPTS, KEYS, saveStat } from '../components/Shared.jsx'
 
 const safe=s=>s.every(x=>x>-999999&&x<999999)
 const ch=arr=>arr[Math.floor(Math.random()*arr.length)]
@@ -41,11 +41,15 @@ export default function Zahlenfolgen({onBack}){
 
   function startGame(){setQuestion(makeTask());setScore(0);setTotal(0);setSelected(null);setShowFb(false);setDone(false);setRemaining(count);resetGame(endless?99999:count*90);setMode('game')}
   useEffect(()=>{if(mode==='game'&&!endless&&gameTimer<=0&&!showFb&&question)setDone(true)},[gameTimer,mode,endless,showFb,question])
+  useEffect(()=>{if(done&&!endless)saveStat('zahlenfolgen',score,total)},[done,endless,score,total])
+
+  const advanceRef = useRef(null)
 
   function answer(i){
     if(selected!==null||showFb)return
     setSelected(i);if(i===question.correctIdx)setScore(s=>s+1);setTotal(t=>t+1)
-    setTimeout(()=>{setShowFb(true);setTimeout(()=>setFbReady(true),250)},50)
+    if(endless) setTimeout(()=>{setShowFb(true);setTimeout(()=>setFbReady(true),250)},50)
+    else advanceRef.current = setTimeout(()=>nextQ(),300)
   }
   function nextQ(){
     setFbReady(false);setShowFb(false);setSelected(null)
@@ -54,7 +58,7 @@ export default function Zahlenfolgen({onBack}){
     setRemaining(rem);setQuestion(makeTask())
   }
   useEffect(()=>{if(!fbReady)return;const h=()=>nextQ();window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[fbReady,remaining,endless])
-  useEffect(()=>{if(showFb)return;const h=e=>{if(e.key==='Escape'){endless?setDone(true):setMode('settings');return}const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[answer,showFb])
+  useEffect(()=>{if(showFb)return;const h=e=>{if(e.key==='Escape'){endless?setDone(true):setMode('settings');return}if(!endless&&selected!==null){clearTimeout(advanceRef.current);nextQ();return}const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[answer,showFb,selected,endless])
 
   const skRows=[
     [{action:()=>setCount(10)},{action:()=>setCount(0)}],
@@ -106,7 +110,7 @@ export default function Zahlenfolgen({onBack}){
       <Card>
         {q.choices.map((c,i)=>(<OptionBtn key={i} label={OPTS[i]} state={getState(i)} onClick={()=>answer(i)} text={c==='keine'?'Keine Option ist richtig.':`${Array.isArray(c)?c[0]:c}  ,  ${Array.isArray(c)?c[1]:''}`}/>))}
         {!showFb&&<KeyHint/>}
-        {showFb&&(
+        {showFb&&endless&&(
           <div style={{marginTop:16,background:T.surf2,borderRadius:10,padding:'14px 18px'}}>
             <div style={{color:T.muted,fontSize:12,marginBottom:6}}>Schema: <span style={{color:T.text}}>{q.label}</span></div>
             <div style={{color:T.muted,fontSize:12,marginBottom:10}}>Richtige Antwort: <span style={{color:T.green,fontWeight:'bold'}}>{q.choices[q.correctIdx]==='keine'?'Keine Option ist richtig.':Array.isArray(q.choices[q.correctIdx])?`${q.choices[q.correctIdx][0]} , ${q.choices[q.correctIdx][1]}`:''}</span></div>

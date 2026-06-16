@@ -135,7 +135,7 @@ function EmotionenGrid({ qCount, answers, onChange, correctAnswers, mode }) {
                   <span style={{ color:T.muted, fontSize:11, minWidth:14 }}>{opt}</span>
                   <button onClick={() => onChange?.(exIdx, oi, true)}
                     disabled={mode==='results'||!onChange}
-                    data-qidx={exIdx} data-subidx={oi}
+                    data-qidx={exIdx} data-subidx={oi} data-val="true"
                     style={{ ...btnStyle({
                       bg:mode==='results'&&correctVal===true?`${T.green}22`:val===true?`${T.orange}33`:T.surf2,
                       border:mode==='results'&&correctVal===true?T.green:val===true?T.orange:T.border,
@@ -145,7 +145,7 @@ function EmotionenGrid({ qCount, answers, onChange, correctAnswers, mode }) {
                   >eher wahrscheinlich</button>
                   <button onClick={() => onChange?.(exIdx, oi, false)}
                     disabled={mode==='results'||!onChange}
-                    data-qidx={exIdx} data-subidx={oi}
+                    data-qidx={exIdx} data-subidx={oi} data-val="false"
                     style={{ ...btnStyle({
                       bg:mode==='results'&&correctVal===false?`${T.green}22`:val===false?`${T.orange}33`:T.surf2,
                       border:mode==='results'&&correctVal===false?T.green:val===false?T.orange:T.border,
@@ -195,7 +195,7 @@ function SozialesGrid({ qCount, answers, onChange, correctAnswers, mode }) {
                       return (
                         <button key={r} onClick={() => onChange?.(exIdx, oi, r)}
                           disabled={mode==='results'||!onChange}
-                          data-qidx={exIdx} data-subidx={oi}
+                          data-qidx={exIdx} data-subidx={oi} data-val={r}
                           style={{ width:26, height:26, borderRadius:4, border:`1px solid ${border}`,
                             background:bg, color:fg, cursor:mode==='results'||!onChange?'default':'pointer',
                             fontSize:12, fontWeight:isSel?700:400, padding:0 }}
@@ -276,6 +276,7 @@ export default function Simulationsrechner({ onBack }) {
   const [timer, resetTimer] = useTimer(0)
   const [userAnswers, setUserAnswers] = useState([])
   const [correctAnswers, setCorrectAnswers] = useState([])
+  const [detailSubtest, setDetailSubtest] = useState(null)
 
   // Build runtime subtest list (with optional pause injected)
   function buildSubtests() {
@@ -308,6 +309,7 @@ export default function Simulationsrechner({ onBack }) {
     setCurrentIdx(0)
     resetTimer(sts[0].timeMin * 60)
     setPhase('test')
+    setDetailSubtest(null)
   }
 
   // Find reviewable (scorable) subtests: skip merken and pause
@@ -355,7 +357,8 @@ export default function Simulationsrechner({ onBack }) {
 
   function setUserAnswerEmotionen(exIdx, oi, val) {
     setUserAnswers(prev => {
-      const next = prev.map(a => a ? a.map(r => [...r]) : null)
+      const next = prev.map(a => a ? [...a] : null)
+      next[currentIdx] = next[currentIdx].map(r => [...r])
       next[currentIdx][exIdx][oi] = val
       return next
     })
@@ -363,7 +366,8 @@ export default function Simulationsrechner({ onBack }) {
 
   function setUserAnswerSoziales(exIdx, oi, rank) {
     setUserAnswers(prev => {
-      const next = prev.map(a => a ? a.map(r => [...r]) : null)
+      const next = prev.map(a => a ? [...a] : null)
+      next[currentIdx] = next[currentIdx].map(r => [...r])
       // If another option already has this rank, clear it
       for (let j = 0; j < 5; j++) {
         if (j !== oi && next[currentIdx][exIdx][j] === rank) {
@@ -385,7 +389,8 @@ export default function Simulationsrechner({ onBack }) {
 
   function setCorrectAnswerEmotionen(exIdx, oi, val) {
     setCorrectAnswers(prev => {
-      const next = prev.map(a => a ? a.map(r => [...r]) : null)
+      const next = prev.map(a => a ? [...a] : null)
+      next[currentIdx] = next[currentIdx].map(r => [...r])
       next[currentIdx][exIdx][oi] = val
       return next
     })
@@ -393,7 +398,8 @@ export default function Simulationsrechner({ onBack }) {
 
   function setCorrectAnswerSoziales(exIdx, oi, rank) {
     setCorrectAnswers(prev => {
-      const next = prev.map(a => a ? a.map(r => [...r]) : null)
+      const next = prev.map(a => a ? [...a] : null)
+      next[currentIdx] = next[currentIdx].map(r => [...r])
       for (let j = 0; j < 5; j++) {
         if (j !== oi && next[currentIdx][exIdx][j] === rank) {
           next[currentIdx][exIdx][j] = null
@@ -494,7 +500,12 @@ export default function Simulationsrechner({ onBack }) {
     return { filled, total }
   }
 
-  // ── Refs for keyboard ─────────────────────────────────────────────────────────
+  // ── Refs for keyboard & recovery ───────────────────────────────────────────────
+
+  const userAnswersRef = useRef(userAnswers)
+  userAnswersRef.current = userAnswers
+  const correctAnswersRef = useRef(correctAnswers)
+  correctAnswersRef.current = correctAnswers
 
   const phaseRef = useRef(phase)
   phaseRef.current = phase
@@ -512,6 +523,103 @@ export default function Simulationsrechner({ onBack }) {
   setCorrectAnswerEmoRef.current = setCorrectAnswerEmotionen
   const setCorrectAnswerSozRef = useRef(setCorrectAnswerSoziales)
   setCorrectAnswerSozRef.current = setCorrectAnswerSoziales
+
+  // Recovery helper: call __recoverSimulation() in browser console (F12)
+  useEffect(() => {
+    window.__recoverSimulation = () => {
+      const ua = userAnswersRef.current
+      const ca = correctAnswersRef.current
+      const sts = subtestsRef.current
+
+      // Fix corrupted standard entries: corrupt version has strings wrapped in arrays ['A']→'A'
+      const fix = (arr) => {
+        if (!arr) return arr
+        return arr.map(item => {
+          if (Array.isArray(item) && item.length === 1 && typeof item[0] === 'string') {
+            return item[0]  // unwrap
+          }
+          return item
+        })
+      }
+
+      const fixedUA = ua.map((a, i) => {
+        if (!a || sts[i]?.type === 'emotionen' || sts[i]?.type === 'soziales') return a
+        return fix(a)
+      })
+      const fixedCA = ca.map((a, i) => {
+        if (!a || sts[i]?.type === 'emotionen' || sts[i]?.type === 'soziales') return a
+        return fix(a)
+      })
+
+      // Re-run computeResults with fixed data
+      const weights = computeWeights(sts)
+      const breakdown = sts.map((st, i) => {
+        let scored = 0, correct = 0
+        if (st.type === 'standard') {
+          for (let qi = 0; qi < st.qCount; qi++) {
+            if (fixedCA[i]?.[qi] != null && fixedUA[i]?.[qi] != null) {
+              scored++
+              if (fixedUA[i][qi] === fixedCA[i][qi]) correct++
+            }
+          }
+        } else if (st.type === 'emotionen') {
+          for (let ei = 0; ei < st.qCount; ei++) {
+            const uRow = fixedUA[i]?.[ei], cRow = fixedCA[i]?.[ei]
+            if (!uRow || !cRow) continue
+            if (!uRow.every(v=>v!=null) || !cRow.every(v=>v!=null)) continue
+            scored++
+            if (uRow.every((v,oi)=>v===cRow[oi])) correct++
+          }
+        } else if (st.type === 'soziales') {
+          for (let ei = 0; ei < st.qCount; ei++) {
+            const uRow = fixedUA[i]?.[ei], cRow = fixedCA[i]?.[ei]
+            if (!uRow || !cRow) continue
+            if (!uRow.every(v=>v!=null) || !cRow.every(v=>v!=null)) continue
+            scored++
+            let diffSum = 0
+            for (let oi=0; oi<5; oi++) diffSum += Math.abs(uRow[oi]-cRow[oi])
+            correct += 1 - diffSum/12
+          }
+        }
+        const total = getScoredItems(st)
+        const pct = total > 0 ? correct/total : null
+        return { ...st, scored, correct, pct, weight: weights[i] }
+      })
+
+      const sectionW = SECTION_WEIGHTS
+      const secData = {}
+      for (const b of breakdown) {
+        const sec = b.section === 'BMS' && b.name === 'Textverständnis' ? 'TV' : b.section
+        if (!secData[sec]) secData[sec] = { correct:0, total:0 }
+        secData[sec].correct += b.correct
+        secData[sec].total += getScoredItems(b)
+      }
+      let gesamt = 0
+      for (const [sec, d] of Object.entries(secData)) {
+        if (d.total > 0 && sectionW[sec]) gesamt += (d.correct/d.total) * sectionW[sec]
+      }
+
+      const rows = breakdown.filter(b => b.type!=='merken' && b.type!=='pause')
+      console.table(rows.map((b,i) => ({
+        '#': i+1,
+        Untertest: b.name,
+        Fragen: getScoredItems(b),
+        Richtig: b.type==='soziales'?b.correct.toFixed(1):b.correct,
+        Bewertet: b.scored,
+        '%': b.pct!=null?Math.round(b.pct*100)+'%':'–',
+        Gewicht: (b.weight*100).toFixed(1)+'%',
+      })))
+      console.log('Gesamtscore:', Math.round(gesamt*100)+'%')
+      console.log('Falls die Werte stimmen, Screenshot machen! Nach Reload sind die Daten weg.')
+      return { breakdown, gesamt }
+    }
+    return () => { delete window.__recoverSimulation }
+  }, [])
+
+  // Direkter Zugriff auf Rohdaten via window.__simData (für Recovery per HMR)
+  useEffect(() => {
+    window.__simData = { userAnswers, correctAnswers, subtests }
+  }, [userAnswers, correctAnswers, subtests])
 
   useEffect(() => {
     const h = e => {
@@ -550,18 +658,17 @@ export default function Simulationsrechner({ onBack }) {
         if (st.type === 'standard') {
           setUserAnswerRef.current(qIdx, OPTS[oi])
         } else if (st.type === 'emotionen') {
-          setUserAnswerEmoRef.current(qIdx, subIdx ?? oi, true)
+          setUserAnswerEmoRef.current(qIdx, subIdx ?? oi, el.dataset.val !== 'false')
         } else if (st.type === 'soziales') {
-          // oi 0-4 maps to rank 1-5
-          setUserAnswerSozRef.current(qIdx, subIdx ?? oi, oi + 1)
+          setUserAnswerSozRef.current(qIdx, subIdx ?? oi, parseInt(el.dataset.val) || 1)
         }
       } else if (ph === 'review') {
         if (st.type === 'standard') {
           setCorrectAnswerRef.current(qIdx, OPTS[oi])
         } else if (st.type === 'emotionen') {
-          setCorrectAnswerEmoRef.current(qIdx, subIdx ?? oi, true)
+          setCorrectAnswerEmoRef.current(qIdx, subIdx ?? oi, el.dataset.val !== 'false')
         } else if (st.type === 'soziales') {
-          setCorrectAnswerSozRef.current(qIdx, subIdx ?? oi, oi + 1)
+          setCorrectAnswerSozRef.current(qIdx, subIdx ?? oi, parseInt(el.dataset.val) || 1)
         }
       }
     }
@@ -813,10 +920,15 @@ export default function Simulationsrechner({ onBack }) {
 
   if (phase === 'results') {
     const { breakdown, totalScored, totalCorrect, totalItems, totalPct, gesamtScore } = computeResults()
-    const scoringSubtests = breakdown.filter(b => b.type !== 'merken' && b.type !== 'pause')
+    const scoringWithIdx = []
+    for (let i = 0; i < subtests.length; i++) {
+      if (subtests[i].type !== 'merken' && subtests[i].type !== 'pause') {
+        scoringWithIdx.push({ ...breakdown[i], subtestIdx: i })
+      }
+    }
     return (
       <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 20px' }}>
-        <BackBtn onBack={() => { setPhase('settings'); setUserAnswers([]); setCorrectAnswers([]) }} />
+        <BackBtn onBack={() => { setPhase('settings'); setUserAnswers([]); setCorrectAnswers([]); setDetailSubtest(null) }} />
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
           <div>
             <div style={{ color:T.orange, fontSize:24, fontWeight:'bold', marginBottom:4 }}>Auswertung</div>
@@ -832,6 +944,7 @@ export default function Simulationsrechner({ onBack }) {
         </div>
 
         <Card>
+          <div style={{ color:T.muted, fontSize:11, marginBottom:8 }}>Klick auf eine Zeile für Detailansicht</div>
           <div style={{ display:'grid', gap:6 }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:11, color:T.muted, marginBottom:4 }}>
               <span style={{ minWidth:20, textAlign:'right', flexShrink:0 }}>#</span>
@@ -842,27 +955,56 @@ export default function Simulationsrechner({ onBack }) {
               <span style={{ width:46, textAlign:'center', flexShrink:0 }}>Gewicht</span>
               <span style={{ width:70, flexShrink:0 }}></span>
             </div>
-            {scoringSubtests.map((b, i) => (
-              <div key={i} style={{ display:'flex', alignItems:'center', gap:8, fontSize:12 }}>
-                <span style={{ color:T.muted, minWidth:20, textAlign:'right', flexShrink:0 }}>{i+1}.</span>
-                <span style={{ color:T.text, flex:1 }}>{b.name}</span>
-                <span style={{ color:T.muted, width:40, textAlign:'center', flexShrink:0 }}>{getScoredItems(b)}</span>
-                <span style={{ color:b.pct!=null?(b.pct>=0.7?T.green:b.pct>=0.4?T.yellow:T.red):T.muted, fontWeight:700, width:42, textAlign:'center', flexShrink:0 }}>
-                  {b.type==='soziales'?b.correct.toFixed(1):b.correct}
-                </span>
-                <span style={{ color:b.pct!=null?(b.pct>=0.7?T.green:b.pct>=0.4?T.yellow:T.red):T.muted, fontWeight:700, width:38, textAlign:'center', flexShrink:0 }}>
-                  {b.pct!=null?`${Math.round(b.pct*100)}%`:'–'}
-                </span>
-                <span style={{ color:T.muted, width:46, textAlign:'center', flexShrink:0, fontSize:11 }}>
-                  {b.weight>0?`${(b.weight*100).toFixed(1)}%`:'–'}
-                </span>
-                <div style={{ width:70, height:6, background:T.surf2, borderRadius:3, flexShrink:0 }}>
-                  <div style={{ width:`${b.pct!=null?b.pct*100:0}%`, height:'100%',
-                    background:b.pct!=null&&b.pct>=0.7?T.green:b.pct!=null&&b.pct>=0.4?T.yellow:T.red,
-                    borderRadius:3, transition:'width 0.5s' }} />
+            {scoringWithIdx.map((b, i) => {
+              const idx = b.subtestIdx
+              const st = subtests[idx]
+              const isExpanded = detailSubtest === idx
+              return (
+                <div key={idx}>
+                  <div onClick={() => setDetailSubtest(isExpanded ? null : idx)}
+                    style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, cursor:'pointer',
+                      background:isExpanded?T.surf2:'transparent', borderRadius:6, padding:'4px 6px', transition:'background 0.1s' }}>
+                    <span style={{ color:T.muted, minWidth:20, textAlign:'right', flexShrink:0 }}>{isExpanded ? '▾' : '▸'} {i+1}.</span>
+                    <span style={{ color:T.text, flex:1 }}>{b.name}</span>
+                    <span style={{ color:T.muted, width:40, textAlign:'center', flexShrink:0 }}>{getScoredItems(b)}</span>
+                    <span style={{ color:b.pct!=null?(b.pct>=0.7?T.green:b.pct>=0.4?T.yellow:T.red):T.muted, fontWeight:700, width:42, textAlign:'center', flexShrink:0 }}>
+                      {b.type==='soziales'?b.correct.toFixed(1):b.correct}
+                    </span>
+                    <span style={{ color:b.pct!=null?(b.pct>=0.7?T.green:b.pct>=0.4?T.yellow:T.red):T.muted, fontWeight:700, width:38, textAlign:'center', flexShrink:0 }}>
+                      {b.pct!=null?`${Math.round(b.pct*100)}%`:'–'}
+                    </span>
+                    <span style={{ color:T.muted, width:46, textAlign:'center', flexShrink:0, fontSize:11 }}>
+                      {b.weight>0?`${(b.weight*100).toFixed(1)}%`:'–'}
+                    </span>
+                    <div style={{ width:70, height:6, background:T.surf2, borderRadius:3, flexShrink:0 }}>
+                      <div style={{ width:`${b.pct!=null?b.pct*100:0}%`, height:'100%',
+                        background:b.pct!=null&&b.pct>=0.7?T.green:b.pct!=null&&b.pct>=0.4?T.yellow:T.red,
+                        borderRadius:3, transition:'width 0.5s' }} />
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div style={{ marginLeft:28, marginBottom:8, marginTop:4, padding:12,
+                      background:T.surf2, borderRadius:8, border:`1px solid ${T.border}` }}>
+                      <div style={{ color:T.muted, fontSize:11, marginBottom:8 }}>
+                        Deine Antworten vs. Lösungsschablone
+                        {st.type === 'standard' ? ' — Grün = richtig, Rot = falsch, Orange = deine Wahl'
+                         : st.type === 'emotionen' ? ' — Zeile komplett richtig = 1 Punkt'
+                         : ' — Je geringer die Abweichung, desto mehr Punkte'}
+                      </div>
+                      {st.type === 'standard' && (
+                        <StandardGrid qCount={st.qCount} answers={userAnswers[idx]} correctAnswers={correctAnswers[idx]} mode="results" />
+                      )}
+                      {st.type === 'emotionen' && (
+                        <EmotionenGrid qCount={st.qCount} answers={userAnswers[idx]} correctAnswers={correctAnswers[idx]} mode="results" />
+                      )}
+                      {st.type === 'soziales' && (
+                        <SozialesGrid qCount={st.qCount} answers={userAnswers[idx]} correctAnswers={correctAnswers[idx]} mode="results" />
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
           {gesamtScore != null && (
             <div style={{ marginTop:16, paddingTop:16, borderTop:`1px solid ${T.border}`, textAlign:'center' }}>
@@ -878,11 +1020,12 @@ export default function Simulationsrechner({ onBack }) {
               const ri = reviewIndices(subtests)
               setPhase('review')
               setCurrentIdx(ri[0] ?? 0)
+              setDetailSubtest(null)
             }}
             style={{ background:T.surf2, border:`1px solid ${T.border}`, borderRadius:10,
               color:T.text, cursor:'pointer', padding:'12px 24px', fontSize:14 }}
           >← Lösung korrigieren</button>
-          <button onClick={() => { setPhase('settings'); setUserAnswers([]); setCorrectAnswers([]) }}
+          <button onClick={() => { setPhase('settings'); setUserAnswers([]); setCorrectAnswers([]); setDetailSubtest(null) }}
             style={{ background:T.orange, border:'none', borderRadius:10, color:'#000',
               cursor:'pointer', padding:'12px 24px', fontSize:14, fontWeight:'bold' }}
           >Neue Simulation</button>

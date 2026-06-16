@@ -210,6 +210,25 @@ export function ScoreBar({ score, total, color }) {
   return <span style={{ color, fontSize: 14 }}>{score}/{total} <span style={{ color: T.muted }}>({pct}%)</span></span>
 }
 
+// ─── Statistics (localStorage) ──────────────────────────────────────────────────
+const STATS_KEY = 'openmedat_stats'
+const MAX_STATS = 100
+
+export function saveStat(test, correct, total) {
+  try {
+    const existing = JSON.parse(localStorage.getItem(STATS_KEY) || '[]')
+    existing.push({ test, date: new Date().toISOString(), correct, total })
+    if (existing.length > MAX_STATS) existing.splice(0, existing.length - MAX_STATS)
+    localStorage.setItem(STATS_KEY, JSON.stringify(existing))
+  } catch (e) { /* localStorage not available */ }
+}
+
+export function getStats() {
+  try {
+    return JSON.parse(localStorage.getItem(STATS_KEY) || '[]')
+  } catch (e) { return [] }
+}
+
 export function playBeep() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)()

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, ScoreBar, useTimer, useSettingsKeyboard, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, ScoreBar, useTimer, useSettingsKeyboard, pick, shuffle, OPTS, KEYS, saveStat } from '../components/Shared.jsx'
 import { UNIQUE_WORDS } from '../data/words.js'
 
 const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
@@ -54,11 +54,15 @@ export default function Wortfluessigkeit({onBack}){
 
   function startGame(){setQuestion(makeTask());setScore(0);setTotal(0);setSelected(null);setShowFb(false);setDone(false);setRemaining(count);resetGame(endless?99999:count*80);setMode('game')}
   useEffect(()=>{if(mode==='game'&&!endless&&gameTimer<=0&&!showFb&&question)setDone(true)},[gameTimer,mode,endless,showFb,question])
+  useEffect(()=>{if(done&&!endless)saveStat('wortfluessigkeit',score,total)},[done,endless,score,total])
+
+  const advanceRef = useRef(null)
 
   function answer(i){
     if(selected!==null||showFb)return
     setSelected(i);if(i===question.correctIdx)setScore(s=>s+1);setTotal(t=>t+1)
-    setTimeout(()=>{setShowFb(true);setTimeout(()=>setFbReady(true),250)},50)
+    if(endless) setTimeout(()=>{setShowFb(true);setTimeout(()=>setFbReady(true),250)},50)
+    else advanceRef.current = setTimeout(()=>nextQ(),300)
   }
   function nextQ(){
     setFbReady(false);setShowFb(false);setSelected(null)
@@ -67,7 +71,7 @@ export default function Wortfluessigkeit({onBack}){
     setRemaining(rem);setQuestion(makeTask())
   }
   useEffect(()=>{if(!fbReady)return;const h=()=>nextQ();window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[fbReady,remaining,endless])
-  useEffect(()=>{if(showFb)return;const h=e=>{if(e.key==='Escape'){endless?setDone(true):setMode('settings');return}const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[answer,showFb])
+  useEffect(()=>{if(showFb)return;const h=e=>{if(e.key==='Escape'){endless?setDone(true):setMode('settings');return}if(!endless&&selected!==null){clearTimeout(advanceRef.current);nextQ();return}const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[answer,showFb,selected,endless])
 
   const skRows=[
     [{action:()=>setCount(15)},{action:()=>setCount(0)}],
@@ -136,7 +140,7 @@ export default function Wortfluessigkeit({onBack}){
         <div style={{color:T.muted,fontSize:13,marginBottom:12}}>Welcher Buchstabe steht am Anfang?</div>
         {q.opts.map((o,i)=>(<OptionBtn key={i} label={OPTS[i]} state={getState(i)} onClick={()=>answer(i)} text={o==='keine'?'Keine Option ist richtig.':o}/>))}
         {!showFb&&<KeyHint/>}
-        {showFb&&(
+        {showFb&&endless&&(
           <div style={{marginTop:16,background:T.surf2,borderRadius:10,padding:'14px 18px'}}>
             <div style={{color:T.muted,fontSize:12,marginBottom:6}}>Das Wort war: <span style={{color:T.yellow,fontWeight:'bold',letterSpacing:2}}>{q.word}</span></div>
             <div style={{color:T.muted,fontSize:12,marginBottom:10}}>Anfangsbuchstabe: <span style={{color:T.green,fontWeight:'bold',fontSize:18}}>{q.word[0]}</span></div>

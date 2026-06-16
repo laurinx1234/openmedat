@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, ScoreBar, useTimer, useSettingsKeyboard, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, ScoreBar, useTimer, useSettingsKeyboard, shuffle, OPTS, KEYS, saveStat } from '../components/Shared.jsx'
 
 const NOUNS=["Hunde","Katzen","Vögel","Fische","Elefanten","Löwen","Bären","Wölfe","Pferde","Schlangen","Adler","Delphine","Krokodile","Papageien","Tiger","Gorillas","Flamingos","Pinguine","Wale","Haie","Ärzte","Lehrer","Kinder","Studenten","Soldaten","Musiker","Maler","Sportler","Künstler","Richter","Chirurgen","Ingenieure","Bankräuber","Pianisten","Tänzer","Sänger","Wissenschaftler","Autos","Bücher","Bäume","Steine","Pflanzen","Roboter","Maschinen","Schiffe","Flugzeuge","Computer","Pilze","Algen","Bakterien","Insekten","Reptilien","Lebewesen","Objekte","Kristalle","Planeten","Rosen","Tulpen","Orchideen","Kakteen","Farne","Korallen","Häuser","Türme","Burgen","Kathedralen","Pyramiden","Brücken","Gauner","Einbrecher","Detektive","Spione","Piraten","Ritter","Zauberer","Drachen"]
 
@@ -63,11 +63,15 @@ export default function Implikationen({onBack}){
 
   function startGame(){setQuestion(makeTask());setScore(0);setTotal(0);setSelected(null);setShowFb(false);setDone(false);setRemaining(count);resetGame(endless?99999:count*60);setMode('game')}
   useEffect(()=>{if(mode==='game'&&!endless&&gameTimer<=0&&!showFb&&question)setDone(true)},[gameTimer,mode,endless,showFb,question])
+  useEffect(()=>{if(done&&!endless)saveStat('implikationen',score,total)},[done,endless,score,total])
+
+  const advanceRef = useRef(null)
 
   function answer(i){
     if(selected!==null||showFb)return
     setSelected(i);if(i===question.correctIdx)setScore(s=>s+1);setTotal(t=>t+1)
-    setTimeout(()=>{setShowFb(true);setTimeout(()=>setFbReady(true),250)},50)
+    if(endless) setTimeout(()=>{setShowFb(true);setTimeout(()=>setFbReady(true),250)},50)
+    else advanceRef.current = setTimeout(()=>nextQ(),300)
   }
   function nextQ(){
     setFbReady(false);setShowFb(false);setSelected(null)
@@ -76,7 +80,7 @@ export default function Implikationen({onBack}){
     setRemaining(rem);setQuestion(makeTask())
   }
   useEffect(()=>{if(!fbReady)return;const h=()=>nextQ();window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[fbReady,remaining,endless])
-  useEffect(()=>{if(showFb)return;const h=e=>{if(e.key==='Escape'){endless?setDone(true):setMode('settings');return}const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[answer,showFb])
+  useEffect(()=>{if(showFb)return;const h=e=>{if(e.key==='Escape'){endless?setDone(true):setMode('settings');return}if(!endless&&selected!==null){clearTimeout(advanceRef.current);nextQ();return}const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)},[answer,showFb,selected,endless])
 
   const skRows=[
     [{action:()=>setCount(10)},{action:()=>setCount(0)}],
@@ -128,7 +132,7 @@ export default function Implikationen({onBack}){
       <Card>
         {q.options.map((o,i)=>(<OptionBtn key={i} label={OPTS[i]} state={getState(i)} onClick={()=>answer(i)} text={o}/>))}
         {!showFb&&<KeyHint/>}
-        {showFb&&(
+        {showFb&&endless&&(
           <div style={{marginTop:16,background:T.surf2,borderRadius:10,padding:'14px 18px'}}>
             <div style={{color:T.muted,fontSize:12,marginBottom:4}}>Lösungsmodus: <span style={{color:T.text}}>{q.modusName}</span></div>
             <div style={{color:T.muted,fontSize:12,marginBottom:10}}>Richtige Antwort: <span style={{color:T.green,fontWeight:'bold'}}>{q.options[q.correctIdx]}</span></div>
