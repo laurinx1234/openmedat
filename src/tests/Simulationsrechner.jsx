@@ -88,7 +88,7 @@ function StandardGrid({ qCount, answers, onChange, correctAnswers, mode }) {
         const correctAns = correctAnswers?.[i] ?? null
         return (
           <div key={i} style={{ display:'flex', alignItems:'center', gap:4, padding:'3px 4px', borderRadius:6,
-            background:mode==='results'&&userAns===correctAns?`${T.green}18`:'transparent' }}>
+            background: (mode === 'results' && correctAns != null && userAns != null) ? (userAns === correctAns ? `${T.green}22` : `${T.red}22`) : 'transparent' }}>
             <span style={{ color:T.muted, fontSize:11, minWidth:22, textAlign:'right', flexShrink:0 }}>{i + 1}</span>
             {OPTS.map(opt => {
               let bg = T.surf2, border = T.border, fg = T.muted
@@ -124,8 +124,10 @@ function EmotionenGrid({ qCount, answers, onChange, correctAnswers, mode }) {
       {Array.from({ length:qCount }, (_, exIdx) => {
         const row = answers?.[exIdx] ?? [null,null,null,null,null]
         const correctRow = correctAnswers?.[exIdx] ?? [null,null,null,null,null]
+        const allFilled = row.every(v=>v!=null) && correctRow.every(v=>v!=null)
+        const allCorrect = allFilled && row.every((v,oi)=>v===correctRow[oi])
         return (
-          <div key={exIdx} style={{ background:T.surf2, borderRadius:8, padding:8 }}>
+          <div key={exIdx} style={{ background:(mode==='results'&&allFilled)?(allCorrect?`${T.green}22`:`${T.red}22`):T.surf2, borderRadius:8, padding:8 }}>
             <div style={{ color:T.muted, fontSize:11, marginBottom:6 }}>Beispiel {exIdx + 1}</div>
             {OPTS.map((opt, oi) => {
               const val = row[oi]
@@ -137,9 +139,9 @@ function EmotionenGrid({ qCount, answers, onChange, correctAnswers, mode }) {
                     disabled={mode==='results'||!onChange}
                     data-qidx={exIdx} data-subidx={oi} data-val="true"
                     style={{ ...btnStyle({
-                      bg:mode==='results'&&correctVal===true?`${T.green}22`:val===true?`${T.orange}33`:T.surf2,
-                      border:mode==='results'&&correctVal===true?T.green:val===true?T.orange:T.border,
-                      fg:mode==='results'&&correctVal===true?T.green:val===true?T.orange:T.muted,
+                      bg:mode==='results'&&correctVal===true?`${T.green}22`:mode==='results'&&val===true?`${T.red}22`:val===true?`${T.orange}33`:T.surf2,
+                      border:mode==='results'&&correctVal===true?T.green:mode==='results'&&val===true?T.red:val===true?T.orange:T.border,
+                      fg:mode==='results'&&correctVal===true?T.green:mode==='results'&&val===true?T.red:val===true?T.orange:T.muted,
                       small:true
                     }), minWidth:130 }}
                   >eher wahrscheinlich</button>
@@ -147,9 +149,9 @@ function EmotionenGrid({ qCount, answers, onChange, correctAnswers, mode }) {
                     disabled={mode==='results'||!onChange}
                     data-qidx={exIdx} data-subidx={oi} data-val="false"
                     style={{ ...btnStyle({
-                      bg:mode==='results'&&correctVal===false?`${T.green}22`:val===false?`${T.orange}33`:T.surf2,
-                      border:mode==='results'&&correctVal===false?T.green:val===false?T.orange:T.border,
-                      fg:mode==='results'&&correctVal===false?T.green:val===false?T.orange:T.muted,
+                      bg:mode==='results'&&correctVal===false?`${T.green}22`:mode==='results'&&val===false?`${T.red}22`:val===false?`${T.orange}33`:T.surf2,
+                      border:mode==='results'&&correctVal===false?T.green:mode==='results'&&val===false?T.red:val===false?T.orange:T.border,
+                      fg:mode==='results'&&correctVal===false?T.green:mode==='results'&&val===false?T.red:val===false?T.orange:T.muted,
                       small:true
                     }), minWidth:130 }}
                   >eher unwahrscheinlich</button>
@@ -170,8 +172,10 @@ function SozialesGrid({ qCount, answers, onChange, correctAnswers, mode }) {
       {Array.from({ length:qCount }, (_, exIdx) => {
         const row = answers?.[exIdx] ?? [null,null,null,null,null]
         const correctRow = correctAnswers?.[exIdx] ?? [null,null,null,null,null]
+        const allFilled = row.every(v=>v!=null) && correctRow.every(v=>v!=null)
+        const allCorrect = allFilled && row.every((v,oi)=>v===correctRow[oi])
         return (
-          <div key={exIdx} style={{ background:T.surf2, borderRadius:8, padding:8 }}>
+          <div key={exIdx} style={{ background:(mode==='results'&&allFilled)?(allCorrect?`${T.green}22`:`${T.red}22`):T.surf2, borderRadius:8, padding:8 }}>
             <div style={{ color:T.muted, fontSize:11, marginBottom:6 }}>Beispiel {exIdx + 1}</div>
             {OPTS.map((opt, oi) => {
               const val = row[oi]
@@ -987,7 +991,7 @@ export default function Simulationsrechner({ onBack }) {
                       background:T.surf2, borderRadius:8, border:`1px solid ${T.border}` }}>
                       <div style={{ color:T.muted, fontSize:11, marginBottom:8 }}>
                         Deine Antworten vs. Lösungsschablone
-                        {st.type === 'standard' ? ' — Grün = richtig, Rot = falsch, Orange = deine Wahl'
+                        {st.type === 'standard' ? ' — Grün = richtige Antwort, Rot = falsche Antwort'
                          : st.type === 'emotionen' ? ' — Zeile komplett richtig = 1 Punkt'
                          : ' — Je geringer die Abweichung, desto mehr Punkte'}
                       </div>
