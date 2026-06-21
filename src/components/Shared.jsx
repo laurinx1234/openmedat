@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { T } from '../theme.js'
 
-export function useTimer(seconds) {
+export function useTimer(seconds, paused = false) {
   const [t, setT] = useState(seconds)
   useEffect(() => {
-    if (t <= 0) return
+    if (t <= 0 || paused) return
     const id = setTimeout(() => setT(x => x - 1), 1000)
     return () => clearTimeout(id)
-  }, [t])
+  }, [t, paused])
   const reset = (s) => setT(s)
   return [t, reset]
 }

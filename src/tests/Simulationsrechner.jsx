@@ -277,7 +277,8 @@ export default function Simulationsrechner({ onBack }) {
   const [phase, setPhase] = useState('settings')
   const [includePause, setIncludePause] = useState(true)
   const [currentIdx, setCurrentIdx] = useState(0)
-  const [timer, resetTimer] = useTimer(0)
+  const [timerPaused, setTimerPaused] = useState(false)
+  const [timer, resetTimer] = useTimer(0, timerPaused)
   const [userAnswers, setUserAnswers] = useState([])
   const [correctAnswers, setCorrectAnswers] = useState([])
   const [detailSubtest, setDetailSubtest] = useState(null)
@@ -311,6 +312,7 @@ export default function Simulationsrechner({ onBack }) {
     setUserAnswers(initAnswers(sts))
     setCorrectAnswers(initAnswers(sts))
     setCurrentIdx(0)
+    setTimerPaused(false)
     resetTimer(sts[0].timeMin * 60)
     setPhase('test')
     setDetailSubtest(null)
@@ -334,6 +336,7 @@ export default function Simulationsrechner({ onBack }) {
     } else {
       const next = currentIdx + 1
       setCurrentIdx(next)
+      setTimerPaused(false)
       resetTimer(subtests[next].timeMin * 60)
     }
   }, [timer, phase])
@@ -346,6 +349,7 @@ export default function Simulationsrechner({ onBack }) {
     } else {
       const next = currentIdx + 1
       setCurrentIdx(next)
+      setTimerPaused(false)
       resetTimer(subtests[next].timeMin * 60)
     }
   }
@@ -776,6 +780,12 @@ export default function Simulationsrechner({ onBack }) {
           </div>
         </div>
         <TimerDisplay seconds={timer} />
+        <div style={{ textAlign:'center', marginBottom:20 }}>
+          <button onClick={() => setTimerPaused(p => !p)}
+            style={{ background:timerPaused?T.orange:'none', border:`1px solid ${timerPaused?T.orange:T.border}`, borderRadius:8,
+              color:timerPaused?'#000':T.muted, cursor:'pointer', padding:'6px 20px', fontSize:13, fontWeight:timerPaused?600:400 }}
+          >{timerPaused ? '▶ Fortsetzen' : '⏸ Stop'}</button>
+        </div>
 
         {st.type === 'pause' && (
           <Card style={{ textAlign:'center', padding:60 }}>
