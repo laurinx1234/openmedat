@@ -101,7 +101,7 @@ function StandardGrid({ qCount, answers, onChange, correctAnswers, mode }) {
                 } else { bg = `${T.orange}33`; border = T.orange; fg = T.orange }
               }
               return (
-                <button key={opt} onClick={() => onChange?.(i, opt)}
+                <button key={opt} onClick={() => onChange?.(i, userAns === opt ? null : opt)}
                   disabled={mode==='results'||!onChange}
                   data-qidx={i}
                   style={{ width:24, height:24, borderRadius:4, border:`1px solid ${border}`,
@@ -135,7 +135,7 @@ function EmotionenGrid({ qCount, answers, onChange, correctAnswers, mode }) {
               return (
                 <div key={opt} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
                   <span style={{ color:T.muted, fontSize:11, minWidth:14 }}>{opt}</span>
-                  <button onClick={() => onChange?.(exIdx, oi, true)}
+                  <button onClick={() => onChange?.(exIdx, oi, val === true ? null : true)}
                     disabled={mode==='results'||!onChange}
                     data-qidx={exIdx} data-subidx={oi} data-val="true"
                     style={{ ...btnStyle({
@@ -145,7 +145,7 @@ function EmotionenGrid({ qCount, answers, onChange, correctAnswers, mode }) {
                       small:true
                     }), minWidth:130 }}
                   >eher wahrscheinlich</button>
-                  <button onClick={() => onChange?.(exIdx, oi, false)}
+                  <button onClick={() => onChange?.(exIdx, oi, val === false ? null : false)}
                     disabled={mode==='results'||!onChange}
                     data-qidx={exIdx} data-subidx={oi} data-val="false"
                     style={{ ...btnStyle({
@@ -197,7 +197,7 @@ function SozialesGrid({ qCount, answers, onChange, correctAnswers, mode }) {
                         } else { bg = `${T.orange}33`; border = T.orange; fg = T.orange }
                       }
                       return (
-                        <button key={r} onClick={() => onChange?.(exIdx, oi, r)}
+                        <button key={r} onClick={() => onChange?.(exIdx, oi, val === r ? null : r)}
                           disabled={mode==='results'||!onChange}
                           data-qidx={exIdx} data-subidx={oi} data-val={r}
                           style={{ width:26, height:26, borderRadius:4, border:`1px solid ${border}`,
@@ -664,19 +664,29 @@ export default function Simulationsrechner({ onBack }) {
 
       if (ph === 'test') {
         if (st.type === 'standard') {
-          setUserAnswerRef.current(qIdx, OPTS[oi])
+          const cur = userAnswersRef.current[idx]?.[qIdx]
+          setUserAnswerRef.current(qIdx, cur === OPTS[oi] ? null : OPTS[oi])
         } else if (st.type === 'emotionen') {
-          setUserAnswerEmoRef.current(qIdx, subIdx ?? oi, el.dataset.val !== 'false')
+          const targetVal = el.dataset.val !== 'false'
+          const cur = userAnswersRef.current[idx]?.[qIdx]?.[subIdx ?? oi]
+          setUserAnswerEmoRef.current(qIdx, subIdx ?? oi, cur === targetVal ? null : targetVal)
         } else if (st.type === 'soziales') {
-          setUserAnswerSozRef.current(qIdx, subIdx ?? oi, parseInt(el.dataset.val) || 1)
+          const targetRank = parseInt(el.dataset.val) || 1
+          const cur = userAnswersRef.current[idx]?.[qIdx]?.[subIdx ?? oi]
+          setUserAnswerSozRef.current(qIdx, subIdx ?? oi, cur === targetRank ? null : targetRank)
         }
       } else if (ph === 'review') {
         if (st.type === 'standard') {
-          setCorrectAnswerRef.current(qIdx, OPTS[oi])
+          const cur = correctAnswersRef.current[idx]?.[qIdx]
+          setCorrectAnswerRef.current(qIdx, cur === OPTS[oi] ? null : OPTS[oi])
         } else if (st.type === 'emotionen') {
-          setCorrectAnswerEmoRef.current(qIdx, subIdx ?? oi, el.dataset.val !== 'false')
+          const targetVal = el.dataset.val !== 'false'
+          const cur = correctAnswersRef.current[idx]?.[qIdx]?.[subIdx ?? oi]
+          setCorrectAnswerEmoRef.current(qIdx, subIdx ?? oi, cur === targetVal ? null : targetVal)
         } else if (st.type === 'soziales') {
-          setCorrectAnswerSozRef.current(qIdx, subIdx ?? oi, parseInt(el.dataset.val) || 1)
+          const targetRank = parseInt(el.dataset.val) || 1
+          const cur = correctAnswersRef.current[idx]?.[qIdx]?.[subIdx ?? oi]
+          setCorrectAnswerSozRef.current(qIdx, subIdx ?? oi, cur === targetRank ? null : targetRank)
         }
       }
     }
