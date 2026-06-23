@@ -201,7 +201,7 @@ export default function Allergieausweise({onBack}){
   const[answers,setAnswers]=useState([])
   const[done,setDone]=useState(false)
 
-  // Sync learnMin with cardCount
+  // Preselect learnMin when cardCount changes (still manually adjustable)
   useEffect(()=>{setSettings(s=>({...s,learnMin:s.cardCount}))},[settings.cardCount])
 
   // If quiz pending on mount, load it
@@ -287,7 +287,7 @@ export default function Allergieausweise({onBack}){
   // Settings keyboard
   const skGroupDefs=[
     [{v:2},{v:3},{v:4},{v:5},{v:6},{v:7},{v:8}].map(()=>({action:()=>{}})).map((o,i)=>({action:()=>setSettings(s=>({...s,cardCount:[2,3,4,5,6,7,8][i]}))})),
-    [1,2,3,4,5,6,7,8,9,10,12,15].map((v,i)=>({action:()=>setSettings(s=>({...s,learnMin:v}))})),
+    Array.from({length:20},(_,i)=>({action:()=>setSettings(s=>({...s,learnMin:i+1}))})),
     [5,10,15,20,25,30,35,40,45,50,55,60].map((v,i)=>({action:()=>setSettings(s=>({...s,quizDelayMin:v}))})),
     [5,10,15,20,25].map((v)=>({action:()=>setSettings(s=>({...s,qCount:v}))})),
   ]
@@ -312,16 +312,26 @@ export default function Allergieausweise({onBack}){
         <Card>
           {[
             {label:'Anzahl Ausweise',key:'cardCount',opts:[{v:2,l:'2'},{v:3,l:'3'},{v:4,l:'4'},{v:5,l:'5'},{v:6,l:'6'},{v:7,l:'7'},{v:8,l:'8'}],row:0},
-            {label:'Lernzeit',key:'learnMin',opts:[1,2,3,4,5,6,7,8,9,10,12,15].map(v=>({v,l:v+' Min'})),row:1},
+            {label:'Lernzeit',key:'learnMin',type:'slider',min:1,max:20,row:1},
             {label:'Wartezeit',key:'quizDelayMin',opts:[5,10,15,20,25,30,35,40,45,50,55,60].map(v=>({v,l:v+'m'})),row:2},
             {label:'Anzahl Fragen',key:'qCount',opts:[{v:5,l:'5'},{v:10,l:'10'},{v:15,l:'15'},{v:20,l:'20'},{v:25,l:'25'}],row:3},
-          ].map(({label,key,opts,row})=>(
+          ].map(({label,key,opts,row,type,min,max})=>(
             <div key={key} style={{marginBottom:20}}>
-              <div style={{color:T.muted,fontSize:13,marginBottom:8}}>{label}:</div>
-              {key==='cardCount'&&<div style={{color:T.muted,fontSize:11,marginBottom:6}}>Lernzeit: {settings.learnMin} Min</div>}
-              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                {opts.map((o,i)=>(<button key={o.v} onClick={()=>setSettings(s=>({...s,[key]:o.v}))} style={{background:settings[key]===o.v?`${T.green}22`:T.surf2,border:`1px solid ${settings[key]===o.v?T.green:T.border}`,borderRadius:8,color:settings[key]===o.v?T.green:T.text,cursor:'pointer',padding:'8px 14px',fontSize:13,boxShadow:skF(row,i)?`0 0 0 2px ${T.green}`:'none'}}>{o.l}</button>))}
-              </div>
+              <div style={{color:T.muted,fontSize:13,marginBottom:8}}>{label}: <span style={{color:T.green,fontWeight:'bold'}}>{type==='slider'?settings[key]+' Min':''}</span></div>
+              {type==='slider'?(
+                <div style={{display:'flex',alignItems:'center',gap:12}}>
+                  <span style={{color:T.muted,fontSize:12}}>{min} Min</span>
+                  <input type="range" min={min} max={max} step={1} value={settings[key]}
+                    onChange={e=>setSettings(s=>({...s,[key]:Number(e.target.value)}))}
+                    style={{flex:1,accentColor:T.green,height:6,cursor:'pointer',
+                      boxShadow:skF(row,0)?`0 0 0 3px ${T.green}88`:'none',borderRadius:4,outline:'none'}}/>
+                  <span style={{color:T.muted,fontSize:12}}>{max} Min</span>
+                </div>
+              ):(
+                <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                  {opts.map((o,i)=>(<button key={o.v} onClick={()=>setSettings(s=>({...s,[key]:o.v}))} style={{background:settings[key]===o.v?`${T.green}22`:T.surf2,border:`1px solid ${settings[key]===o.v?T.green:T.border}`,borderRadius:8,color:settings[key]===o.v?T.green:T.text,cursor:'pointer',padding:'8px 14px',fontSize:13,boxShadow:skF(row,i)?`0 0 0 2px ${T.green}`:'none'}}>{o.l}</button>))}
+                </div>
+              )}
             </div>
           ))}
           <button onClick={startLearn} style={{background:T.green,border:'none',borderRadius:10,color:'#000',cursor:'pointer',padding:'14px 32px',fontSize:16,fontWeight:'bold',marginTop:8,boxShadow:skS()?`0 0 0 3px ${T.green}88`:'none'}}>Fotos laden & starten</button>
