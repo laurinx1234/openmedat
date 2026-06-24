@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, NavDots, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS, playBeep } from '../components/Shared.jsx'
+import { Card, BackBtn, TimerBadge, OptionBtn, KeyHint, NavDots, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS, playBeep } from '../components/Shared.jsx'
 import { setSession, getSession, clearSession, isQuizReady } from '../allergStore.js'
 import { navigate } from '../router.js'
 
@@ -197,9 +197,10 @@ export default function Allergieausweise({onBack}){
   const[shownCards,setShownCards]=useState([])
   const[learnTimer,resetLearn]=useTimer(0)
   const[questions,setQuestions]=useState([])
-  const[qIdx,setQIdx]=useState(0)
+  const[focusedQ,setFocusedQ]=useState(0)
   const[answers,setAnswers]=useState([])
   const[done,setDone]=useState(false)
+  const questionRefs=useRef({})
 
   // Preselect learnMin when cardCount changes (still manually adjustable)
   useEffect(()=>{setSettings(s=>({...s,learnMin:s.cardCount}))},[settings.cardCount])
@@ -209,8 +210,9 @@ export default function Allergieausweise({onBack}){
     if(phase==='quiz_pending'){
       const s=getSession()
       if(s){
+        setShownCards(s.shownCards);setAllCards(s.allCards)
         const qs=Array.from({length:s.qCount},()=>makeQuestion(s.shownCards,s.allCards))
-        setQuestions(qs);setQIdx(0);setAnswers(Array(qs.length).fill(null));setDone(false)
+        setQuestions(qs);setFocusedQ(0);setAnswers(Array(qs.length).fill(null));setDone(false)
         setPhase('quiz')
       }
     }
@@ -256,33 +258,55 @@ export default function Allergieausweise({onBack}){
 
   function startQuiz(){
     const qs=Array.from({length:settings.qCount},()=>makeQuestion(shownCards,allCards))
-    setQuestions(qs);setQIdx(0);setAnswers(Array(qs.length).fill(null));setDone(false)
+    setQuestions(qs);setFocusedQ(0);setAnswers(Array(qs.length).fill(null));setDone(false)
     setPhase('quiz')
   }
 
   function startQuizFromStore(){
     const s=getSession()
     if(!s)return
+    setShownCards(s.shownCards);setAllCards(s.allCards)
     const qs=Array.from({length:s.qCount},()=>makeQuestion(s.shownCards,s.allCards))
-    setQuestions(qs);setQIdx(0);setAnswers(Array(qs.length).fill(null));setDone(false)
+    setQuestions(qs);setFocusedQ(0);setAnswers(Array(qs.length).fill(null));setDone(false)
     setPhase('quiz')
   }
 
-  const answer=useCallback((i)=>{
-    if(done||qIdx>=questions.length||answers[qIdx]!==null)return
-    const next=[...answers];next[qIdx]=i;setAnswers(next)
-  },[done,qIdx,questions,answers])
+  const answer=useCallback((qi,i)=>{
+    if(done)return
+    const next=[...answers];next[qi]=next[qi]===i?null:i;setAnswers(next)
+  },[done,answers])
 
+  const fqRef=useRef(focusedQ);fqRef.current=focusedQ
+  const ansRef=useRef(answers);ansRef.current=answers
   useEffect(()=>{
-    if(phase!=='quiz')return
+    if(phase!=='quiz'||done)return
     const h=e=>{
-      if(e.key==='Escape'){clearSession();setPhase('settings');return}
-      if(e.key==='ArrowRight'){e.preventDefault();setQIdx(x=>Math.min(x+1,questions.length-1))}
-      else if(e.key==='ArrowLeft'){e.preventDefault();setQIdx(x=>Math.max(x-1,0))}
-      else{const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(i)}
+      if(e.key==='Tab'){
+        e.preventDefault()
+        setFocusedQ(x=>{
+          const nx=e.shiftKey?Math.max(x-1,0):Math.min(x+1,questions.length-1)
+          questionRefs.current[nx]?.scrollIntoView({behavior:'smooth',block:'nearest'})
+          return nx
+        })
+      }
+      else if(e.key==='ArrowDown'){
+        e.preventDefault()
+        const cur=fqRef.current;const curAns=ansRef.current[cur]
+        const opts=questions[cur].opts
+        const nx=curAns===null?0:curAns+1>=opts.length?0:curAns+1
+        answer(cur,nx)
+      }
+      else if(e.key==='ArrowUp'){
+        e.preventDefault()
+        const cur=fqRef.current;const curAns=ansRef.current[cur]
+        const opts=questions[cur].opts
+        const nx=curAns===null?opts.length-1:curAns-1<0?opts.length-1:curAns-1
+        answer(cur,nx)
+      }
+      else{const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(fqRef.current,i)}
     }
     window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)
-  },[answer,phase,questions.length])
+  },[answer,phase,done,questions.length,questions])
 
   // Settings keyboard
   const skGroupDefs=[
@@ -403,41 +427,86 @@ export default function Allergieausweise({onBack}){
   // ── Done ──
   if(done){
     const score=answers.reduce((s,a,i)=>s+(a===questions[i]?.correctIdx?1:0),0)
+    const pct=Math.round((score/questions.length)*100)
+    const col=pct>=70?T.green:pct>=50?T.yellow:T.red
     return(
-      <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
+      <div style={{maxWidth:780,margin:'0 auto',padding:'24px 20px'}}>
         <BackBtn onBack={()=>{clearSession();onBack()}}/>
-        <ResultScreen correct={score} total={questions.length} onRetry={()=>{clearSession();setPhase('settings')}} onBack={()=>{clearSession();onBack()}}/>
+        <div style={{textAlign:'center',padding:'20px 0 32px'}}>
+          <div style={{fontSize:72,fontWeight:'bold',color:col,marginBottom:8}}>{pct}%</div>
+          <div style={{color:T.muted,fontSize:16}}>{score} von {questions.length} richtig</div>
+        </div>
+        <div style={{color:T.green,fontSize:18,fontWeight:'bold',marginBottom:12}}>Allergieausweise</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:12,marginBottom:32}}>
+          {shownCards.map((c,i)=><AusweisCard key={i} card={c}/>)}
+        </div>
+        <div style={{color:T.green,fontSize:18,fontWeight:'bold',marginBottom:12}}>Fragen</div>
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {questions.map((q,qi)=>{
+            const userAns=answers[qi]
+            const isCorrect=userAns===q.correctIdx
+            return(
+              <Card key={qi} style={{borderLeft:`3px solid ${isCorrect?T.green:T.red}`}}>
+                <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+                  <span style={{color:T.muted,fontSize:13,minWidth:22,flexShrink:0}}>{qi+1}.</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    {q.showAvatar&&<div style={{marginBottom:8}}><Avatar card={q.card} size={40}/></div>}
+                    <div style={{fontSize:14,color:T.text,marginBottom:10}}>{q.question}</div>
+                    <div style={{fontSize:13}}>
+                      <div style={{color:isCorrect?T.green:T.red,marginBottom:2}}>
+                        Deine Antwort: {userAns!==null?q.opts[userAns]==='keine'?'Keine Antwort ist richtig.':q.opts[userAns]:'Keine'}
+                        {isCorrect?' ✓':' ✗'}
+                      </div>
+                      {!isCorrect&&<div style={{color:T.green}}>Richtig: {q.opts[q.correctIdx]==='keine'?'Keine Antwort ist richtig.':q.opts[q.correctIdx]}</div>}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+        <div style={{display:'flex',gap:12,justifyContent:'center',marginTop:32}}>
+          <button onClick={()=>{clearSession();setPhase('settings')}} style={{background:T.surf2,border:`1px solid ${T.border}`,borderRadius:8,color:T.text,cursor:'pointer',padding:'12px 28px',fontSize:15}}>Nochmal</button>
+          <button onClick={()=>{clearSession();onBack()}} style={{background:'none',border:`1px solid ${T.border}`,borderRadius:8,color:T.muted,cursor:'pointer',padding:'12px 28px',fontSize:15}}>Hauptmenü</button>
+        </div>
       </div>
     )
   }
 
   // ── Quiz ──
-  const q=questions[qIdx];if(!q)return null
-  const myAns=answers[qIdx]
-  const getState=i=>myAns===null?'idle':i===q.correctIdx?'correct':i===myAns?'wrong':'idle'
-  const allDone=answers.every(a=>a!==null)
+  const answeredCount=answers.filter(a=>a!==null).length
   return(
     <div style={{maxWidth:720,margin:'0 auto',padding:'24px 20px'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-        <div style={{display:'flex',gap:12,alignItems:'center'}}>
-          <button onClick={()=>{clearSession();setPhase('settings')}} style={{background:'none',border:`1px solid ${T.border}`,borderRadius:8,color:T.muted,cursor:'pointer',padding:'6px 14px',fontSize:13}}>← Zurück</button>
-          <div style={{color:T.green,fontSize:20,fontWeight:'bold'}}>Abfrage</div>
-        </div>
-        <div style={{display:'flex',gap:12,alignItems:'center'}}>
-          <span style={{color:T.muted,fontSize:14}}>{qIdx+1} / {questions.length}</span>
-          {allDone&&<button onClick={()=>{clearSession();setDone(true)}} style={{background:T.green,border:'none',borderRadius:8,color:'#000',cursor:'pointer',padding:'6px 14px',fontSize:13,fontWeight:'bold'}}>Ergebnis</button>}
-        </div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+        <button onClick={()=>{clearSession();setPhase('settings')}} style={{background:'none',border:`1px solid ${T.border}`,borderRadius:8,color:T.muted,cursor:'pointer',padding:'6px 14px',fontSize:13}}>← Zurück</button>
+        <div style={{color:T.green,fontSize:20,fontWeight:'bold'}}>Abfrage</div>
+        <button onClick={()=>setDone(true)} style={{background:T.green,border:'none',borderRadius:8,color:'#000',cursor:'pointer',padding:'8px 16px',fontSize:13,fontWeight:'bold'}}>Ergebnis ({answeredCount}/{questions.length})</button>
       </div>
-      <NavDots questions={questions} answers={answers} current={qIdx} onGo={i=>setQIdx(i)} color={T.green}/>
-      <Card style={{marginBottom:16}}>
-        {q.showAvatar&&<div style={{display:'flex',justifyContent:'center',marginBottom:16}}><div style={{background:T.surf2,borderRadius:16,padding:8,overflow:'hidden',width:116,height:116,display:'flex',alignItems:'center',justifyContent:'center'}}><Avatar card={q.card} size={100}/></div></div>}
-        <div style={{fontSize:17,color:T.text}}>{q.question}</div>
-      </Card>
-      <Card>
-        {q.opts.map((o,i)=>(<OptionBtn key={i} label={OPTS[i]} state={getState(i)} onClick={()=>answer(i)} text={o==='keine'?'Keine Antwort ist richtig.':o}/>))}
-        <KeyHint/>
-        <div style={{color:T.muted,fontSize:11,marginTop:6}}>← → blättern</div>
-      </Card>
+      <NavDots questions={questions} answers={answers} current={focusedQ} onGo={i=>{setFocusedQ(i);questionRefs.current[i]?.scrollIntoView({behavior:'smooth',block:'nearest'})}} color={T.green}/>
+      <div style={{display:'flex',flexDirection:'column',gap:20}}>
+        {questions.map((q,qi)=>{
+          const isFocused=focusedQ===qi
+          return(
+            <div key={qi} ref={el=>questionRefs.current[qi]=el} onClick={()=>setFocusedQ(qi)} style={{borderRadius:12,outline:isFocused?`2px solid ${T.blue}`:'2px solid transparent',outlineOffset:2,transition:'outline 0.15s',cursor:'pointer'}}>
+              <Card>
+                <div style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:q.showAvatar?12:8}}>
+                  <span style={{color:T.muted,fontSize:13,minWidth:22,flexShrink:0,lineHeight:'20px'}}>{qi+1}.</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    {q.showAvatar&&<div style={{marginBottom:10}}><div style={{background:T.surf2,borderRadius:12,padding:4,overflow:'hidden',width:64,height:64,display:'flex',alignItems:'center',justifyContent:'center'}}><Avatar card={q.card} size={56}/></div></div>}
+                    <div style={{fontSize:16,color:T.text}}>{q.question}</div>
+                  </div>
+                </div>
+                {q.opts.map((o,i)=>(<OptionBtn key={i} label={OPTS[i]} state={answers[qi]===i?'selected':'idle'} onClick={()=>answer(qi,i)} text={o==='keine'?'Keine Antwort ist richtig.':o}/>))}
+              </Card>
+            </div>
+          )
+        })}
+      </div>
+      <div style={{marginTop:24,display:'flex',justifyContent:'center'}}>
+        <button onClick={()=>setDone(true)} style={{background:T.green,border:'none',borderRadius:10,color:'#000',cursor:'pointer',padding:'14px 40px',fontSize:16,fontWeight:'bold'}}>Ergebnis anzeigen ({answeredCount}/{questions.length})</button>
+      </div>
+      <KeyHint/>
+      <div style={{color:T.muted,fontSize:11,marginTop:4,textAlign:'center'}}>Tab ↦ nächste Frage · ↑↓ Antwort wählen · A–E antworten</div>
     </div>
   )
 }

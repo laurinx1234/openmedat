@@ -52,16 +52,17 @@ export function TimerBadge({ seconds }) {
 
 export function OptionBtn({ label, text, state, onClick, style = {} }) {
   const colors = {
-    idle:    [T.surf2, T.border, T.text],
-    correct: [`${T.green}22`, T.green, T.text],
-    wrong:   [`${T.red}22`, T.red, T.text],
+    idle:     [T.surf2, T.border, T.text],
+    selected: [`${T.blue}22`, T.blue, T.text],
+    correct:  [`${T.green}22`, T.green, T.text],
+    wrong:    [`${T.red}22`, T.red, T.text],
   }
   const [bg, bc, tc] = colors[state] || colors.idle
   return (
     <button onClick={onClick} style={{
       display: 'flex', alignItems: 'flex-start', gap: 12, width: '100%',
       background: bg, border: `1px solid ${bc}`, borderRadius: 10,
-      color: tc, cursor: state === 'idle' ? 'pointer' : 'default',
+      color: tc, cursor: (state === 'idle' || state === 'selected') ? 'pointer' : 'default',
       padding: '12px 16px', fontSize: 14, textAlign: 'left',
       marginBottom: 8, transition: 'all 0.15s', ...style
     }}>
