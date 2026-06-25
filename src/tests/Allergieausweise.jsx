@@ -50,6 +50,71 @@ export function AusweisCard({card}){
   </div>
 }
 
+export function AllergieQuiz({ questions, answers, onAnswer, color }) {
+  const [focusedQ, setFocusedQ] = useState(0)
+  const questionRefs = useRef({})
+  const fqRef = useRef(focusedQ)
+  const ansRef = useRef(answers)
+  fqRef.current = focusedQ
+  ansRef.current = answers
+
+  useEffect(() => {
+    const h = e => {
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        setFocusedQ(x => {
+          const nx = e.shiftKey ? Math.max(x - 1, 0) : Math.min(x + 1, questions.length - 1)
+          questionRefs.current[nx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+          return nx
+        })
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        const cur = fqRef.current, curAns = ansRef.current[cur]
+        const nx = curAns === null ? 0 : (curAns + 1) % questions[cur].opts.length
+        onAnswer(cur, nx)
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        const cur = fqRef.current, curAns = ansRef.current[cur]
+        const len = questions[cur].opts.length
+        const nx = curAns === null ? len - 1 : (curAns - 1 + len) % len
+        onAnswer(cur, nx)
+      } else {
+        const i = KEYS.indexOf(e.key.toLowerCase())
+        if (i >= 0 && i < 5) onAnswer(fqRef.current, i)
+      }
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [onAnswer, questions])
+
+  return (
+    <div>
+      <NavDots questions={questions} answers={answers} current={focusedQ} onGo={i => { setFocusedQ(i); questionRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }} color={color} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {questions.map((q, qi) => {
+          const isFocused = focusedQ === qi
+          return (
+            <div key={qi} ref={el => questionRefs.current[qi] = el} onClick={() => setFocusedQ(qi)} style={{ borderRadius: 12, outline: isFocused ? `2px solid ${T.blue}` : '2px solid transparent', outlineOffset: 2, transition: 'outline 0.15s', cursor: 'pointer' }}>
+              <Card>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: q.showAvatar ? 12 : 8 }}>
+                  <span style={{ color: T.muted, fontSize: 13, minWidth: 22, flexShrink: 0, lineHeight: '20px' }}>{qi + 1}.</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {q.showAvatar && <div style={{ marginBottom: 10 }}><img src={q.card.photoUrl} width={56} height={56} alt="" style={{ borderRadius: '50%', objectFit: 'cover', objectPosition: 'center top' }} /></div>}
+                    <div style={{ fontSize: 16, color: T.text }}>{q.question}</div>
+                  </div>
+                </div>
+                {q.opts.map((o, i) => (
+                  <OptionBtn key={i} label={OPTS[i]} state={answers[qi] === i ? 'selected' : 'idle'} onClick={() => onAnswer(qi, i)} text={o === 'keine' ? 'Keine Antwort ist richtig.' : o} />
+                ))}
+              </Card>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 const Q_TYPES=[
   // Name → Attribut
   {label:(c)=>`Wie lautet die Ausweisnummer von ${c.name}?`,correct:(c)=>c.ausweisnummer,pool:(cs)=>cs.map(c=>c.ausweisnummer),av:false},
@@ -168,10 +233,8 @@ export default function Allergieausweise({onBack}){
   const[shownCards,setShownCards]=useState([])
   const[learnTimer,resetLearn]=useTimer(0)
   const[questions,setQuestions]=useState([])
-  const[focusedQ,setFocusedQ]=useState(0)
   const[answers,setAnswers]=useState([])
   const[done,setDone]=useState(false)
-  const questionRefs=useRef({})
 
   // Preselect learnMin when cardCount changes (still manually adjustable)
   useEffect(()=>{setSettings(s=>({...s,learnMin:s.cardCount}))},[settings.cardCount])
@@ -183,7 +246,7 @@ export default function Allergieausweise({onBack}){
       if(s){
         setShownCards(s.shownCards);setAllCards(s.allCards)
         const qs=Array.from({length:s.qCount},()=>makeQuestion(s.shownCards,s.allCards))
-        setQuestions(qs);setFocusedQ(0);setAnswers(Array(qs.length).fill(null));setDone(false)
+        setQuestions(qs);setAnswers(Array(qs.length).fill(null));setDone(false)
         setPhase('quiz')
       }
     }
@@ -229,7 +292,7 @@ export default function Allergieausweise({onBack}){
 
   function startQuiz(){
     const qs=Array.from({length:settings.qCount},()=>makeQuestion(shownCards,allCards))
-    setQuestions(qs);setFocusedQ(0);setAnswers(Array(qs.length).fill(null));setDone(false)
+    setQuestions(qs);setAnswers(Array(qs.length).fill(null));setDone(false)
     setPhase('quiz')
   }
 
@@ -238,7 +301,7 @@ export default function Allergieausweise({onBack}){
     if(!s)return
     setShownCards(s.shownCards);setAllCards(s.allCards)
     const qs=Array.from({length:s.qCount},()=>makeQuestion(s.shownCards,s.allCards))
-    setQuestions(qs);setFocusedQ(0);setAnswers(Array(qs.length).fill(null));setDone(false)
+    setQuestions(qs);setAnswers(Array(qs.length).fill(null));setDone(false)
     setPhase('quiz')
   }
 
@@ -246,38 +309,6 @@ export default function Allergieausweise({onBack}){
     if(done)return
     const next=[...answers];next[qi]=next[qi]===i?null:i;setAnswers(next)
   },[done,answers])
-
-  const fqRef=useRef(focusedQ);fqRef.current=focusedQ
-  const ansRef=useRef(answers);ansRef.current=answers
-  useEffect(()=>{
-    if(phase!=='quiz'||done)return
-    const h=e=>{
-      if(e.key==='Tab'){
-        e.preventDefault()
-        setFocusedQ(x=>{
-          const nx=e.shiftKey?Math.max(x-1,0):Math.min(x+1,questions.length-1)
-          questionRefs.current[nx]?.scrollIntoView({behavior:'smooth',block:'nearest'})
-          return nx
-        })
-      }
-      else if(e.key==='ArrowDown'){
-        e.preventDefault()
-        const cur=fqRef.current;const curAns=ansRef.current[cur]
-        const opts=questions[cur].opts
-        const nx=curAns===null?0:curAns+1>=opts.length?0:curAns+1
-        answer(cur,nx)
-      }
-      else if(e.key==='ArrowUp'){
-        e.preventDefault()
-        const cur=fqRef.current;const curAns=ansRef.current[cur]
-        const opts=questions[cur].opts
-        const nx=curAns===null?opts.length-1:curAns-1<0?opts.length-1:curAns-1
-        answer(cur,nx)
-      }
-      else{const i=KEYS.indexOf(e.key.toLowerCase());if(i>=0&&i<5)answer(fqRef.current,i)}
-    }
-    window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)
-  },[answer,phase,done,questions.length,questions])
 
   // Settings keyboard
   const skGroupDefs=[
@@ -453,26 +484,7 @@ export default function Allergieausweise({onBack}){
         <div style={{color:T.green,fontSize:20,fontWeight:'bold'}}>Abfrage</div>
         <button onClick={()=>setDone(true)} style={{background:T.green,border:'none',borderRadius:8,color:'#000',cursor:'pointer',padding:'8px 16px',fontSize:13,fontWeight:'bold'}}>Ergebnis ({answeredCount}/{questions.length})</button>
       </div>
-      <NavDots questions={questions} answers={answers} current={focusedQ} onGo={i=>{setFocusedQ(i);questionRefs.current[i]?.scrollIntoView({behavior:'smooth',block:'nearest'})}} color={T.green}/>
-      <div style={{display:'flex',flexDirection:'column',gap:20}}>
-        {questions.map((q,qi)=>{
-          const isFocused=focusedQ===qi
-          return(
-            <div key={qi} ref={el=>questionRefs.current[qi]=el} onClick={()=>setFocusedQ(qi)} style={{borderRadius:12,outline:isFocused?`2px solid ${T.blue}`:'2px solid transparent',outlineOffset:2,transition:'outline 0.15s',cursor:'pointer'}}>
-              <Card>
-                <div style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:q.showAvatar?12:8}}>
-                  <span style={{color:T.muted,fontSize:13,minWidth:22,flexShrink:0,lineHeight:'20px'}}>{qi+1}.</span>
-                  <div style={{flex:1,minWidth:0}}>
-                    {q.showAvatar&&<div style={{marginBottom:10}}><img src={q.card.photoUrl} width={56} height={56} alt="" style={{borderRadius:'50%',objectFit:'cover',objectPosition:'center top'}}/></div>}
-                    <div style={{fontSize:16,color:T.text}}>{q.question}</div>
-                  </div>
-                </div>
-                {q.opts.map((o,i)=>(<OptionBtn key={i} label={OPTS[i]} state={answers[qi]===i?'selected':'idle'} onClick={()=>answer(qi,i)} text={o==='keine'?'Keine Antwort ist richtig.':o}/>))}
-              </Card>
-            </div>
-          )
-        })}
-      </div>
+      <AllergieQuiz questions={questions} answers={answers} onAnswer={answer} color={T.green}/>
       <div style={{marginTop:24,display:'flex',justifyContent:'center'}}>
         <button onClick={()=>setDone(true)} style={{background:T.green,border:'none',borderRadius:10,color:'#000',cursor:'pointer',padding:'14px 40px',fontSize:16,fontWeight:'bold'}}>Ergebnis anzeigen ({answeredCount}/{questions.length})</button>
       </div>

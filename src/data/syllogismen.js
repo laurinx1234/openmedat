@@ -130,7 +130,7 @@ Synagogen
 Schulen
 Universitäten
 Bibliotheken
-K_rankenhäuser
+Krankenhäuser
 Apotheken
 Geschäfte
 Supermärkte

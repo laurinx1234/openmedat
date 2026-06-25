@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, TimerBadge, NavDots, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
-import { makeTask as makeZahlen } from './Zahlenfolgen.jsx'
-import { makeTask as makeWort } from './Wortfluessigkeit.jsx'
-import { makeTask as makeImpl } from './Implikationen.jsx'
-import { makeTask as makeFigur, ptsToPath, arcPath, regPoly, PC } from './Figuren.jsx'
-import { genCardPool, fetchPhotos, makeQuestion, AusweisCard } from './Allergieausweise.jsx'
+import { Card, BackBtn, TimerBadge, useTimer, useSettingsKeyboard, pick, shuffle } from '../components/Shared.jsx'
+import { makeTask as makeZahlen, ZahlenQuiz } from './Zahlenfolgen.jsx'
+import { makeTask as makeWort, WortQuiz } from './Wortfluessigkeit.jsx'
+import { makeTask as makeImpl, ImplQuiz } from './Implikationen.jsx'
+import { makeTask as makeFigur, FigurenQuiz, ptsToPath, arcPath, regPoly } from './Figuren.jsx'
+import { genCardPool, fetchPhotos, makeQuestion, AusweisCard, AllergieQuiz } from './Allergieausweise.jsx'
 
 // ─── Simulation config ────────────────────────────────────────────────────────
 const PHASES = [
@@ -95,7 +95,7 @@ function ReviewPanel({categories,onBack}){
           const border=isCorrect?T.green:isUserPick?T.red:T.border
           return(
             <div key={i} style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:bg,border:`1px solid ${border}`,borderRadius:10,color:T.text,padding:'10px 16px',fontSize:14,textAlign:'left',marginBottom:8}}>
-              <span style={{color:T.yellow,minWidth:22,fontWeight:'bold',flexShrink:0}}>{OPTS[i]}</span>
+              <span style={{color:T.yellow,minWidth:22,fontWeight:'bold',flexShrink:0}}>{['A','B','C','D','E'][i]}</span>
               {o&&o.shape?<div style={{display:'flex',alignItems:'center',gap:10,flex:1}}><FigAnswerSVG shape={o.shape} size={48}/><span>{o.shape.label}</span></div>:o&&typeof o==='object'&&o!==null&&o.shape===null?<span style={{flex:1,color:T.muted}}>Keine der Figuren ist richtig.</span>:<span style={{flex:1}}>{getOptionText(q,i)}</span>}
               {isCorrect&&isUserPick&&<span style={{color:T.green,fontWeight:'bold',marginLeft:'auto',flexShrink:0}}>✓ Richtig</span>}
               {isCorrect&&!isUserPick&&<span style={{color:T.green,fontWeight:'bold',marginLeft:'auto',flexShrink:0}}>✓ Richtige Antwort</span>}
@@ -108,6 +108,25 @@ function ReviewPanel({categories,onBack}){
       </Card>
     </div>
   )
+}
+
+// FigAnswerSVG for the ReviewPanel (kept here since ReviewPanel is simulation-only)
+function FigAnswerSVG({shape,size=60}){
+  const s=size,cx=s/2,cy=s/2,r=s*0.42
+  const fill=`${T.teal}22`,stroke=T.teal,sw='2'
+  if(shape.isPlaceholder){
+    if(shape.id==='ph_tri')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><polygon points={`${cx},${s*0.08} ${s*0.92},${s*0.88} ${s*0.08},${s*0.88}`} fill={fill} stroke={stroke} strokeWidth={sw}/></svg>
+    if(shape.id==='ph_sq')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><rect x={s*0.1} y={s*0.1} width={s*0.8} height={s*0.8} fill={fill} stroke={stroke} strokeWidth={sw}/></svg>
+    if(shape.id==='ph_rect')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><rect x={s*0.06} y={s*0.22} width={s*0.88} height={s*0.55} fill={fill} stroke={stroke} strokeWidth={sw}/></svg>
+    return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><polygon points={`${s*0.28},${s*0.25} ${s*0.72},${s*0.25} ${s*0.9},${s*0.78} ${s*0.1},${s*0.78}`} fill={fill} stroke={stroke} strokeWidth={sw}/></svg>
+  }
+  if(shape.id==='c4')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><circle cx={cx} cy={cy} r={r} fill={fill} stroke={stroke} strokeWidth={sw}/></svg>
+  if(shape.family==='circle'){
+    const path=arcPath(cx,cy,r,-Math.PI/2,-Math.PI/2+shape.sweep)
+    return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><path d={path} fill={fill} stroke={stroke} strokeWidth={sw} strokeLinejoin="round"/></svg>
+  }
+  const pts=regPoly(shape.sides,cx,cy,r)
+  return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><path d={ptsToPath(pts)} fill={fill} stroke={stroke} strokeWidth={sw} strokeLinejoin="round"/></svg>
 }
 
 function ResultsScreen({scores,onBack,reviewData}){
@@ -183,10 +202,6 @@ function ResultsScreen({scores,onBack,reviewData}){
   )
 }
 
-// ─── Figuren piece renderers (using geometry helpers from Figuren.jsx) ────────
-function FigPieceTile({data,rotation,idx}){const color=PC[idx%9];return<svg viewBox="0 0 100 100" width="90" height="90"><g transform={`rotate(${rotation},50,50)`}><path d={ptsToPath(data)} fill={`${color}35`} stroke={color} strokeWidth="1.2" strokeLinejoin="round"/></g></svg>}
-function FigAnswerSVG({shape,size=60}){const s=size,cx=s/2,cy=s/2,r=s*0.42;if(shape.isPlaceholder){if(shape.id==='ph_tri')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><polygon points={`${cx},${s*0.08} ${s*0.92},${s*0.88} ${s*0.08},${s*0.88}`} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>;if(shape.id==='ph_sq')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><rect x={s*0.1} y={s*0.1} width={s*0.8} height={s*0.8} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>;if(shape.id==='ph_rect')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><rect x={s*0.06} y={s*0.22} width={s*0.88} height={s*0.55} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>;return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><polygon points={`${s*0.28},${s*0.25} ${s*0.72},${s*0.25} ${s*0.9},${s*0.78} ${s*0.1},${s*0.78}`} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>}if(shape.id==='c4')return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><circle cx={cx} cy={cy} r={r} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2"/></svg>;if(shape.family==='circle'){const a0=-Math.PI/2,path=arcPath(cx,cy,r,a0,a0+shape.sweep);return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><path d={path} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2" strokeLinejoin="round"/></svg>}const pts=regPoly(shape.sides,cx,cy,r);return<svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><path d={ptsToPath(pts)} fill={`${T.teal}22`} stroke={T.teal} strokeWidth="2" strokeLinejoin="round"/></svg>}
-
 // ─── Phase transition card ────────────────────────────────────────────────────
 function PhaseCard({phase,onStart,timeLeft}){
   const idx=PHASES.findIndex(p=>p.id===phase.id)
@@ -208,153 +223,40 @@ const PH_WEIGHTS = {figuren:'8',zahlen:'5.3',wort:'8',allerg_q:'13.4',impl:'5.3'
 function phWeight(id){ const w=PH_WEIGHTS[id]; return w ? w+' / 40' : '' }
 
 export default function Simulation({onBack}){
-  const[simPhase,setSimPhase]=useState('intro')   // intro | phase_card | figuren | allerg_l | zahlen | wort | allerg_q | impl | results
+  const[simPhase,setSimPhase]=useState('intro')
   const[phaseIdx,setPhaseIdx]=useState(0)
   const[timer,resetTimer]=useTimer(0)
 
-  // Per-category state
+  // Per-category state (no current-index needed — quiz components manage focus internally)
   const[figQuestions,setFigQuestions]=useState([])
   const[figAnswers,setFigAnswers]=useState([])
-  const[figCurrent,setFigCurrent]=useState(0)
-  const[figRots,setFigRots]=useState([])
 
   const[zahlenQuestions,setZahlenQuestions]=useState([])
   const[zahlenAnswers,setZahlenAnswers]=useState([])
-  const[zahlenCurrent,setZahlenCurrent]=useState(0)
 
   const[wortQuestions,setWortQuestions]=useState([])
   const[wortAnswers,setWortAnswers]=useState([])
-  const[wortCurrent,setWortCurrent]=useState(0)
 
   const[allergCards,setAllergCards]=useState([])
   const[allergShown,setAllergShown]=useState([])
   const[allergQuestions,setAllergQuestions]=useState([])
   const[allergAnswers,setAllergAnswers]=useState([])
-  const[allergCurrent,setAllergCurrent]=useState(0)
 
   const[implQuestions,setImplQuestions]=useState([])
   const[implAnswers,setImplAnswers]=useState([])
-  const[implCurrent,setImplCurrent]=useState(0)
 
   const[scores,setScores]=useState({})
 
-  // ── Central keyboard handler for all answer phases ────────────────────────
+  const currentPhase=PHASES[phaseIdx]
+
+  // Escape → end current phase
   useEffect(() => {
     const ANSWER_PHASES = ['figuren','zahlen','wort','allerg_q','impl']
     if (!ANSWER_PHASES.includes(simPhase)) return
-
-    const h = e => {
-      const i = ['a','s','d','f','g'].indexOf(e.key.toLowerCase())
-      if (i < 0 || i > 4) return
-      e.preventDefault()
-
-      if (simPhase === 'figuren') {
-        setFigAnswers(prev => {
-          if (prev[figCurrent] !== null) return prev
-          const next = [...prev]; next[figCurrent] = i
-          // auto-advance
-          setTimeout(() => {
-            setFigCurrent(cur => {
-              for (let j=cur+1; j<figQuestions.length; j++) { if (next[j]===null) return j }
-              for (let j=0; j<cur; j++)                     { if (next[j]===null) return j }
-              return cur
-            })
-          }, 50)
-          return next
-        })
-      } else if (simPhase === 'zahlen') {
-        setZahlenAnswers(prev => {
-          if (prev[zahlenCurrent] !== null) return prev
-          const next = [...prev]; next[zahlenCurrent] = i
-          setTimeout(() => {
-            setZahlenCurrent(cur => {
-              for (let j=cur+1; j<zahlenQuestions.length; j++) { if (next[j]===null) return j }
-              for (let j=0; j<cur; j++)                         { if (next[j]===null) return j }
-              return cur
-            })
-          }, 50)
-          return next
-        })
-      } else if (simPhase === 'wort') {
-        setWortAnswers(prev => {
-          if (prev[wortCurrent] !== null) return prev
-          const next = [...prev]; next[wortCurrent] = i
-          setTimeout(() => {
-            setWortCurrent(cur => {
-              for (let j=cur+1; j<wortQuestions.length; j++) { if (next[j]===null) return j }
-              for (let j=0; j<cur; j++)                       { if (next[j]===null) return j }
-              return cur
-            })
-          }, 50)
-          return next
-        })
-      } else if (simPhase === 'allerg_q') {
-        setAllergAnswers(prev => {
-          if (prev[allergCurrent] !== null) return prev
-          const next = [...prev]; next[allergCurrent] = i
-          setTimeout(() => {
-            setAllergCurrent(cur => {
-              for (let j=cur+1; j<allergQuestions.length; j++) { if (next[j]===null) return j }
-              for (let j=0; j<cur; j++)                         { if (next[j]===null) return j }
-              return cur
-            })
-          }, 50)
-          return next
-        })
-      } else if (simPhase === 'impl') {
-        setImplAnswers(prev => {
-          if (prev[implCurrent] !== null) return prev
-          const next = [...prev]; next[implCurrent] = i
-          setTimeout(() => {
-            setImplCurrent(cur => {
-              for (let j=cur+1; j<implQuestions.length; j++) { if (next[j]===null) return j }
-              for (let j=0; j<cur; j++)                       { if (next[j]===null) return j }
-              return cur
-            })
-          }, 50)
-          return next
-        })
-      }
-    }
-
-    // Escape → end current phase
-    const esc = e => {
-      if (e.key === 'Escape') endCurrentPhase()
-    }
+    const esc = e => { if (e.key === 'Escape') endCurrentPhase() }
     window.addEventListener('keydown', esc)
-
-    // Arrow key navigation between questions
-    const nav = e => {
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-        e.preventDefault()
-        if (simPhase==='figuren')  setFigCurrent(c => Math.min(c+1, figQuestions.length-1))
-        if (simPhase==='zahlen')   setZahlenCurrent(c => Math.min(c+1, zahlenQuestions.length-1))
-        if (simPhase==='wort')     setWortCurrent(c => Math.min(c+1, wortQuestions.length-1))
-        if (simPhase==='allerg_q') setAllergCurrent(c => Math.min(c+1, allergQuestions.length-1))
-        if (simPhase==='impl')     setImplCurrent(c => Math.min(c+1, implQuestions.length-1))
-      }
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-        e.preventDefault()
-        if (simPhase==='figuren')  setFigCurrent(c => Math.max(c-1, 0))
-        if (simPhase==='zahlen')   setZahlenCurrent(c => Math.max(c-1, 0))
-        if (simPhase==='wort')     setWortCurrent(c => Math.max(c-1, 0))
-        if (simPhase==='allerg_q') setAllergCurrent(c => Math.max(c-1, 0))
-        if (simPhase==='impl')     setImplCurrent(c => Math.max(c-1, 0))
-      }
-    }
-
-    window.addEventListener('keydown', h)
-    window.addEventListener('keydown', nav)
-    window.addEventListener('keydown', esc)
-    return () => {
-      window.removeEventListener('keydown', h)
-      window.removeEventListener('keydown', nav)
-      window.removeEventListener('keydown', esc)
-    }
-  }, [simPhase, figCurrent, zahlenCurrent, wortCurrent, allergCurrent, implCurrent,
-      figQuestions, zahlenQuestions, wortQuestions, allergQuestions, implQuestions])
-
-  const currentPhase=PHASES[phaseIdx]
+    return () => window.removeEventListener('keydown', esc)
+  }, [simPhase])
 
   // Auto-end phase when timer runs out
   useEffect(()=>{
@@ -389,32 +291,30 @@ export default function Simulation({onBack}){
     resetTimer(ph.secs)
     if(ph.id==='figuren'){
       const qs=Array.from({length:15},()=>makeFigur())
-      const rots=qs.map(q=>Array.from({length:(q.pieces.normalized||q.pieces.data||[]).length},()=>rnd(30,330)))
-      setFigQuestions(qs);setFigAnswers(Array(15).fill(null));setFigCurrent(0);setFigRots(rots)
+      setFigQuestions(qs);setFigAnswers(Array(15).fill(null))
       setSimPhase('figuren')
     } else if(ph.id==='allerg_l'){
       const pool=genCardPool()
       const photos=await fetchPhotos(8)
       photos.forEach((url,i)=>{if(i<pool.length)pool[i].photoUrl=url})
       setAllergCards(pool);setAllergShown(pool.slice(0,8))
-      // 8 min fixed for 8 cards (1 min per card)
       resetTimer(8*60)
       setSimPhase('allerg_l')
     } else if(ph.id==='zahlen'){
       const qs=Array.from({length:10},()=>makeZahlen())
-      setZahlenQuestions(qs);setZahlenAnswers(Array(10).fill(null));setZahlenCurrent(0)
+      setZahlenQuestions(qs);setZahlenAnswers(Array(10).fill(null))
       setSimPhase('zahlen')
     } else if(ph.id==='wort'){
       const qs=Array.from({length:15},()=>makeWort())
-      setWortQuestions(qs);setWortAnswers(Array(15).fill(null));setWortCurrent(0)
+      setWortQuestions(qs);setWortAnswers(Array(15).fill(null))
       setSimPhase('wort')
     } else if(ph.id==='allerg_q'){
       const qs=Array.from({length:25},()=>makeQuestion(allergShown,allergCards))
-      setAllergQuestions(qs);setAllergAnswers(Array(25).fill(null));setAllergCurrent(0)
+      setAllergQuestions(qs);setAllergAnswers(Array(25).fill(null))
       setSimPhase('allerg_q')
     } else if(ph.id==='impl'){
       const qs=Array.from({length:10},()=>makeImpl())
-      setImplQuestions(qs);setImplAnswers(Array(10).fill(null));setImplCurrent(0)
+      setImplQuestions(qs);setImplAnswers(Array(10).fill(null))
       setSimPhase('impl')
     }
   }
@@ -501,162 +401,52 @@ export default function Simulation({onBack}){
     </div>
   )
 
-  // Figuren
-  if(simPhase==='figuren'&&figQuestions.length){
-    const q=figQuestions[figCurrent]
-    const rots=figRots[figCurrent]||[]
-    return(
-      <div>
-        <PhaseHeader label="Figuren zusammensetzen" color={T.teal} n={15} answers={figAnswers}/>
-        <div style={{maxWidth:840,margin:'0 auto',padding:'20px 20px'}}>
-          <NavDots questions={figQuestions} answers={figAnswers} current={figCurrent} onGo={setFigCurrent} color={T.teal}/>
-          <Card style={{marginBottom:16}}>
-            <div style={{color:T.muted,fontSize:13,marginBottom:16}}>Welche Figur ergibt sich aus diesen Teilen?</div>
-            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-              {(q.pieces.normalized||q.pieces.data||[]).map((p,i)=>(
-                <div key={i} style={{background:T.surf2,border:`1px solid ${T.border}`,borderRadius:10}}>
-                  <FigPieceTile data={p} rotation={rots[i]||0} idx={i}/>
-                </div>
-              ))}
-            </div>
-          </Card>
-          <Card>
-            {q.opts.map((o,i)=>{
-              const myAns=figAnswers[figCurrent]
-              return<button key={i} onClick={()=>{if(myAns!==null)return;const a=[...figAnswers];a[figCurrent]=i;setFigAnswers(a);for(let j=figCurrent+1;j<figQuestions.length;j++){if(a[j]===null){setFigCurrent(j);return}}for(let j=0;j<figCurrent;j++){if(a[j]===null){setFigCurrent(j);return}}}} style={{display:'flex',alignItems:'center',gap:14,width:'100%',background:myAns===i?`${T.teal}22`:T.surf2,border:`1px solid ${myAns===i?T.teal:T.border}`,borderRadius:10,color:T.text,cursor:myAns===null?'pointer':'default',padding:'10px 16px',fontSize:14,marginBottom:8,transition:'all 0.15s'}}>
-                <span style={{color:T.yellow,fontWeight:'bold',minWidth:22}}>{OPTS[i]}</span>
-                {o.shape?(<><FigAnswerSVG shape={o.shape} size={56}/><span>{o.shape.label}</span></>):<span style={{color:T.muted}}>Keine der Figuren ist richtig.</span>}
-                {myAns===i&&<span style={{color:T.teal,marginLeft:'auto'}}>✓</span>}
-              </button>
-            })}
-            <div style={{color:T.muted,fontSize:11,marginTop:8}}>← → blättern · A S D F G antworten</div>
-          </Card>
-        </div>
-      </div>
-    )
-  }
+  // ── Quiz phases: delegate to subtest components ──
 
-  // Zahlenfolgen
-  if(simPhase==='zahlen'&&zahlenQuestions.length){
-    const q=zahlenQuestions[zahlenCurrent]
-    return(
-      <div>
-        <PhaseHeader label="Zahlenfolgen" color={T.blue} n={10} answers={zahlenAnswers}/>
-        <div style={{maxWidth:800,margin:'0 auto',padding:'20px 20px'}}>
-          <NavDots questions={zahlenQuestions} answers={zahlenAnswers} current={zahlenCurrent} onGo={setZahlenCurrent} color={T.blue}/>
-          <Card style={{marginBottom:16}}>
-            <div style={{color:T.muted,fontSize:13,marginBottom:16}}>Welche zwei Zahlen kommen als 8. und 9. Stelle?</div>
-            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-              {q.visible.map((v,i)=><div key={i} style={{minWidth:56,padding:'12px 8px',background:T.surf2,border:`1px solid ${T.border}`,borderRadius:8,textAlign:'center',fontSize:20,fontWeight:'bold',color:T.text}}>{v}</div>)}
-              {[0,1].map(i=><div key={`q${i}`} style={{minWidth:56,padding:'12px 8px',background:`${T.yellow}18`,border:`1px solid ${T.yellow}`,borderRadius:8,textAlign:'center',fontSize:20,fontWeight:'bold',color:T.yellow}}>?</div>)}
-            </div>
-          </Card>
-          <Card>
-            {q.choices.map((c,i)=>{
-              const myAns=zahlenAnswers[zahlenCurrent]
-              return<button key={i} onClick={()=>{if(myAns!==null)return;const a=[...zahlenAnswers];a[zahlenCurrent]=i;setZahlenAnswers(a);for(let j=zahlenCurrent+1;j<zahlenQuestions.length;j++){if(a[j]===null){setZahlenCurrent(j);return}}for(let j=0;j<zahlenCurrent;j++){if(a[j]===null){setZahlenCurrent(j);return}}}} style={{display:'flex',alignItems:'flex-start',gap:12,width:'100%',background:myAns===i?`${T.blue}22`:T.surf2,border:`1px solid ${myAns===i?T.blue:T.border}`,borderRadius:10,color:T.text,cursor:myAns===null?'pointer':'default',padding:'12px 16px',fontSize:14,textAlign:'left',marginBottom:8,transition:'all 0.15s'}}>
-                <span style={{color:T.yellow,minWidth:22,fontWeight:'bold',flexShrink:0}}>{OPTS[i]}</span>
-                <span>{c==='keine'?'Keine Option ist richtig.':Array.isArray(c)?`${c[0]}  ,  ${c[1]}`:c}</span>
-                {myAns===i&&<span style={{color:T.blue,marginLeft:'auto'}}>✓</span>}
-              </button>
-            })}
-            <div style={{color:T.muted,fontSize:11,marginTop:8}}>← → blättern · A S D F G antworten</div>
-          </Card>
-        </div>
+  if(simPhase==='figuren'&&figQuestions.length)return(
+    <div>
+      <PhaseHeader label="Figuren zusammensetzen" color={T.teal} n={15} answers={figAnswers}/>
+      <div style={{maxWidth:840,margin:'0 auto',padding:'20px 20px'}}>
+        <FigurenQuiz questions={figQuestions} answers={figAnswers} onAnswer={(qi,i)=>{const a=[...figAnswers];a[qi]=a[qi]===i?null:i;setFigAnswers(a)}} color={T.teal}/>
       </div>
-    )
-  }
+    </div>
+  )
 
-  // Wortflüssigkeit
-  if(simPhase==='wort'&&wortQuestions.length){
-    const q=wortQuestions[wortCurrent]
-    const vok=q.display.filter(l=>'AEIOU'.includes(l));const kons=q.display.filter(l=>!'AEIOU'.includes(l))
-    return(
-      <div>
-        <PhaseHeader label="Wortflüssigkeit" color={T.mauve} n={15} answers={wortAnswers}/>
-        <div style={{maxWidth:680,margin:'0 auto',padding:'20px 20px'}}>
-          <NavDots questions={wortQuestions} answers={wortAnswers} current={wortCurrent} onGo={setWortCurrent} color={T.mauve}/>
-          <Card style={{marginBottom:16}}>
-            <div style={{color:T.muted,fontSize:13,marginBottom:16}}>Was ist der Anfangsbuchstabe des Wortes?</div>
-            <div style={{letterSpacing:10,fontSize:32,fontWeight:'bold',color:T.yellow,textAlign:'center',padding:'20px 0',background:T.surf2,borderRadius:10}}>{q.display.join('  ')}</div>
-          </Card>
-          <Card>
-            {q.opts.map((o,i)=>{
-              const myAns=wortAnswers[wortCurrent]
-              return<button key={i} onClick={()=>{if(myAns!==null)return;const a=[...wortAnswers];a[wortCurrent]=i;setWortAnswers(a);for(let j=wortCurrent+1;j<wortQuestions.length;j++){if(a[j]===null){setWortCurrent(j);return}}for(let j=0;j<wortCurrent;j++){if(a[j]===null){setWortCurrent(j);return}}}} style={{display:'flex',alignItems:'flex-start',gap:12,width:'100%',background:myAns===i?`${T.mauve}22`:T.surf2,border:`1px solid ${myAns===i?T.mauve:T.border}`,borderRadius:10,color:T.text,cursor:myAns===null?'pointer':'default',padding:'12px 16px',fontSize:14,textAlign:'left',marginBottom:8,transition:'all 0.15s'}}>
-                <span style={{color:T.yellow,minWidth:22,fontWeight:'bold',flexShrink:0}}>{OPTS[i]}</span>
-                <span>{o==='keine'?'Keine Option ist richtig.':o}</span>
-                {myAns===i&&<span style={{color:T.mauve,marginLeft:'auto'}}>✓</span>}
-              </button>
-            })}
-            <div style={{color:T.muted,fontSize:11,marginTop:8}}>← → blättern · A S D F G antworten</div>
-          </Card>
-        </div>
+  if(simPhase==='zahlen'&&zahlenQuestions.length)return(
+    <div>
+      <PhaseHeader label="Zahlenfolgen" color={T.blue} n={10} answers={zahlenAnswers}/>
+      <div style={{maxWidth:800,margin:'0 auto',padding:'20px 20px'}}>
+        <ZahlenQuiz questions={zahlenQuestions} answers={zahlenAnswers} onAnswer={(qi,i)=>{const a=[...zahlenAnswers];a[qi]=a[qi]===i?null:i;setZahlenAnswers(a)}} color={T.blue}/>
       </div>
-    )
-  }
+    </div>
+  )
 
-  // Allergieausweise quiz
-  if(simPhase==='allerg_q'&&allergQuestions.length){
-    const q=allergQuestions[allergCurrent]
-    return(
-      <div>
-        <PhaseHeader label="Allergieausweise Abfrage" color={T.green} n={25} answers={allergAnswers}/>
-        <div style={{maxWidth:720,margin:'0 auto',padding:'20px 20px'}}>
-          <NavDots questions={allergQuestions} answers={allergAnswers} current={allergCurrent} onGo={setAllergCurrent} color={T.green}/>
-          <Card style={{marginBottom:16}}>
-            {q.showAvatar&&<div style={{display:'flex',justifyContent:'center',marginBottom:16}}><img src={q.card.photoUrl} width={100} height={100} alt="" style={{borderRadius:'50%',objectFit:'cover',objectPosition:'center top'}}/></div>}
-            <div style={{fontSize:17,color:T.text,marginBottom:8}}>{q.question}</div>
-            {!q.showAvatar&&<div style={{marginTop:8,color:T.muted,fontSize:13}}>Person: <span style={{color:T.text}}>{q.card.name}</span></div>}
-          </Card>
-          <Card>
-            {q.opts.map((o,i)=>{
-              const myAns=allergAnswers[allergCurrent]
-              return<button key={i} onClick={()=>{if(myAns!==null)return;const a=[...allergAnswers];a[allergCurrent]=i;setAllergAnswers(a);for(let j=allergCurrent+1;j<allergQuestions.length;j++){if(a[j]===null){setAllergCurrent(j);return}}for(let j=0;j<allergCurrent;j++){if(a[j]===null){setAllergCurrent(j);return}}}} style={{display:'flex',alignItems:'flex-start',gap:12,width:'100%',background:myAns===i?`${T.green}22`:T.surf2,border:`1px solid ${myAns===i?T.green:T.border}`,borderRadius:10,color:T.text,cursor:myAns===null?'pointer':'default',padding:'12px 16px',fontSize:14,textAlign:'left',marginBottom:8,transition:'all 0.15s'}}>
-                <span style={{color:T.yellow,minWidth:22,fontWeight:'bold',flexShrink:0}}>{OPTS[i]}</span>
-                <span>{o==='keine'?'Keine Option ist richtig.':o}</span>
-                {myAns===i&&<span style={{color:T.green,marginLeft:'auto'}}>✓</span>}
-              </button>
-            })}
-            <div style={{color:T.muted,fontSize:11,marginTop:8}}>← → blättern · A S D F G antworten</div>
-          </Card>
-        </div>
+  if(simPhase==='wort'&&wortQuestions.length)return(
+    <div>
+      <PhaseHeader label="Wortflüssigkeit" color={T.mauve} n={15} answers={wortAnswers}/>
+      <div style={{maxWidth:680,margin:'0 auto',padding:'20px 20px'}}>
+        <WortQuiz questions={wortQuestions} answers={wortAnswers} onAnswer={(qi,i)=>{const a=[...wortAnswers];a[qi]=a[qi]===i?null:i;setWortAnswers(a)}} color={T.mauve}/>
       </div>
-    )
-  }
+    </div>
+  )
 
-  // Implikationen
-  if(simPhase==='impl'&&implQuestions.length){
-    const q=implQuestions[implCurrent]
-    return(
-      <div>
-        <PhaseHeader label="Implikationen erkennen" color={T.yellow} n={10} answers={implAnswers}/>
-        <div style={{maxWidth:720,margin:'0 auto',padding:'20px 20px'}}>
-          <NavDots questions={implQuestions} answers={implAnswers} current={implCurrent} onGo={setImplCurrent} color={T.yellow}/>
-          <Card style={{marginBottom:16}}>
-            <div style={{color:T.muted,fontSize:13,marginBottom:16}}>Welche Schlussfolgerung ist logisch korrekt?</div>
-            {[q.p1,q.p2].map((p,i)=>(
-              <div key={i} style={{display:'flex',gap:12,background:T.surf2,borderRadius:10,padding:'14px 18px',borderLeft:`3px solid ${T.yellow}`,marginBottom:10}}>
-                <span style={{color:T.yellow,fontWeight:'bold',minWidth:20}}>{i+1}.</span>
-                <span style={{color:T.text,fontSize:16}}>{p}</span>
-              </div>
-            ))}
-          </Card>
-          <Card>
-            {q.options.map((o,i)=>{
-              const myAns=implAnswers[implCurrent]
-              return<button key={i} onClick={()=>{if(myAns!==null)return;const a=[...implAnswers];a[implCurrent]=i;setImplAnswers(a);for(let j=implCurrent+1;j<implQuestions.length;j++){if(a[j]===null){setImplCurrent(j);return}}for(let j=0;j<implCurrent;j++){if(a[j]===null){setImplCurrent(j);return}}}} style={{display:'flex',alignItems:'flex-start',gap:12,width:'100%',background:myAns===i?`${T.yellow}22`:T.surf2,border:`1px solid ${myAns===i?T.yellow:T.border}`,borderRadius:10,color:T.text,cursor:myAns===null?'pointer':'default',padding:'12px 16px',fontSize:14,textAlign:'left',marginBottom:8,transition:'all 0.15s'}}>
-                <span style={{color:T.yellow,minWidth:22,fontWeight:'bold',flexShrink:0}}>{OPTS[i]}</span>
-                <span>{o}</span>
-                {myAns===i&&<span style={{color:T.yellow,marginLeft:'auto'}}>✓</span>}
-              </button>
-            })}
-            <div style={{color:T.muted,fontSize:11,marginTop:8}}>← → blättern · A S D F G antworten</div>
-          </Card>
-        </div>
+  if(simPhase==='allerg_q'&&allergQuestions.length)return(
+    <div>
+      <PhaseHeader label="Allergieausweise Abfrage" color={T.green} n={25} answers={allergAnswers}/>
+      <div style={{maxWidth:720,margin:'0 auto',padding:'20px 20px'}}>
+        <AllergieQuiz questions={allergQuestions} answers={allergAnswers} onAnswer={(qi,i)=>{const a=[...allergAnswers];a[qi]=a[qi]===i?null:i;setAllergAnswers(a)}} color={T.green}/>
       </div>
-    )
-  }
+    </div>
+  )
+
+  if(simPhase==='impl'&&implQuestions.length)return(
+    <div>
+      <PhaseHeader label="Implikationen erkennen" color={T.yellow} n={10} answers={implAnswers}/>
+      <div style={{maxWidth:720,margin:'0 auto',padding:'20px 20px'}}>
+        <ImplQuiz questions={implQuestions} answers={implAnswers} onAnswer={(qi,i)=>{const a=[...implAnswers];a[qi]=a[qi]===i?null:i;setImplAnswers(a)}} color={T.yellow}/>
+      </div>
+    </div>
+  )
 
   return<div style={{padding:40,color:T.muted,textAlign:'center'}}>Laden…</div>
 }

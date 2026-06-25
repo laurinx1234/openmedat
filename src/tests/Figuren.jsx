@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, ResultScreen, KeyHint, ScoreBar, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS, saveStat } from '../components/Shared.jsx'
+import { Card, BackBtn, ProgressBar, ResultScreen, KeyHint, ScoreBar, NavDots, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS, saveStat } from '../components/Shared.jsx'
 
 // ─── Geometry ──────────────────────────────────────────────────────────────────
 export function regPoly(n, cx=50, cy=50, r=44) {
@@ -56,7 +56,6 @@ export function arcPath(cx, cy, r, a0, a1) {
   return `M ${cx},${cy} L ${x0.toFixed(2)},${y0.toFixed(2)} A ${r},${r} 0 ${sw>Math.PI?1:0},1 ${x1.toFixed(2)},${y1.toFixed(2)} Z`
 }
 
-// Cut only the targeted piece (creates T-junctions when new cuts stop at prior piece boundaries)
 function tryCutPiece(pieces, targetIdx, totalArea, nx, ny, d, minFrac=0.05) {
   const p = pieces[targetIdx]
   const left  = clip(p,  nx,  ny,  d)
@@ -89,7 +88,6 @@ function applyCutToPiece(pieces, targetIdx, totalArea, angle, offset) {
   return null
 }
 
-// 2-segment cut: cuts a piece, then cuts one of the resulting pieces at a different angle
 function applyDoubleCut(pieces, targetIdx, totalArea) {
   const angle1 = Math.random() * Math.PI
   const offset1 = Math.random() * 1.2 - 0.6
@@ -179,27 +177,6 @@ const WINKEL_DATA = [
 
 export const PC = ['#89b4fa','#cba6f7','#94e2d5','#a6e3a1','#f9e2af','#fab387','#f38ba8','#f5c2e7','#89dceb']
 
-// ─── Assembled view ────────────────────────────────────────────────────────────
-function AssembledView({ task, size=200 }) {
-  const raw = task.pieces.raw
-  if (!raw || !raw.length) return null
-  const allPts = raw.flat()
-  const xs=allPts.map(p=>p[0]), ys=allPts.map(p=>p[1])
-  const mnX=Math.min(...xs), mxX=Math.max(...xs)
-  const mnY=Math.min(...ys), mxY=Math.max(...ys)
-  const w=mxX-mnX||1, h=mxY-mnY||1, pad=12
-  const sc=(size-2*pad)/Math.max(w,h)
-  const oX=(size-w*sc)/2-mnX*sc, oY=(size-h*sc)/2-mnY*sc
-  const sp = pts => pts.map(([x,y]) => [x*sc+oX, y*sc+oY])
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
-      {raw.map((pts, i) => (
-        <path key={i} d={ptsToPath(sp(pts))} fill={`${PC[i%9]}55`} stroke={PC[i%9]} strokeWidth="1.5" strokeLinejoin="round"/>
-      ))}
-    </svg>
-  )
-}
-
 // ─── Answer shape SVG ──────────────────────────────────────────────────────────
 function AnswerSVG({ shape, size=70 }) {
   const s=size, cx=s/2, cy=s/2, r=s*0.42
@@ -219,7 +196,7 @@ function AnswerSVG({ shape, size=70 }) {
   return <svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}><path d={ptsToPath(pts)} fill={fill} stroke={stroke} strokeWidth={sw} strokeLinejoin="round"/></svg>
 }
 
-// ─── Puzzle piece tile (colorful) ─────────────────────────────────────────────
+// ─── Puzzle piece tile ─────────────────────────────────────────────────────────
 function PieceTile({ data, rotation, color }) {
   return (
     <svg viewBox="0 0 100 100" width="90" height="90">
@@ -230,7 +207,18 @@ function PieceTile({ data, rotation, color }) {
   )
 }
 
-// ─── Winkel display: two rays from vertex, no arc, no degree label ─────────────
+function genRotations(pieces) {
+  return pieces.map(() => {
+    const r = Math.random()
+    if (r < 0.15) return rnd(8, 35)
+    if (r < 0.30) return rnd(325, 352)
+    if (r < 0.55) return rnd(40, 140)
+    if (r < 0.80) return rnd(220, 320)
+    return rnd(145, 215)
+  })
+}
+
+// ─── Winkel display ────────────────────────────────────────────────────────────
 function WinkelDisplay({ deg, display={}, size=200 }) {
   const { rotation=0, cx=size/2, cy=size*0.72, rayLen=size*0.44 } = display
   const rad = deg * Math.PI / 180
@@ -264,7 +252,6 @@ export function makeTask() {
     return { pieces: pd, opts: [...opts4, {shape:null}], correctIdx: 4, targetShape }
   }
 
-  // Sometimes inject a placeholder into one wrong-option slot (so placeholders don't always signal "pick E")
   let wrongOpts = others.map(s => ({shape:s}))
   if (Math.random() < 0.30) {
     const phIdx = Math.floor(Math.random() * wrongOpts.length)
@@ -287,195 +274,334 @@ export function makeWinkelTask(prevDeg) {
   return { deg: correct.deg, sides: correct.sides, type: correct.type, opts, correctIdx: ci }
 }
 
-// ─── Component ─────────────────────────────────────────────────────────────────
+// ─── FigurenQuiz component ─────────────────────────────────────────────────────
+export function FigurenQuiz({ questions, answers, onAnswer, color }) {
+  const [focusedQ, setFocusedQ] = useState(0)
+  const questionRefs = useRef({})
+  const fqRef = useRef(focusedQ)
+  const ansRef = useRef(answers)
+  fqRef.current = focusedQ
+  ansRef.current = answers
+
+  const rotations = useMemo(() =>
+    questions.map(q => genRotations(q.pieces.normalized || [])),
+    [questions]
+  )
+
+  useEffect(() => {
+    const h = e => {
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        setFocusedQ(x => {
+          const nx = e.shiftKey ? Math.max(x - 1, 0) : Math.min(x + 1, questions.length - 1)
+          questionRefs.current[nx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+          return nx
+        })
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        const cur = fqRef.current, curAns = ansRef.current[cur]
+        const nx = curAns === null ? 0 : (curAns + 1) % questions[cur].opts.length
+        onAnswer(cur, nx)
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        const cur = fqRef.current, curAns = ansRef.current[cur]
+        const len = questions[cur].opts.length
+        const nx = curAns === null ? len - 1 : (curAns - 1 + len) % len
+        onAnswer(cur, nx)
+      } else {
+        const i = KEYS.indexOf(e.key.toLowerCase())
+        if (i >= 0 && i < 5) onAnswer(fqRef.current, i)
+      }
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [onAnswer, questions])
+
+  return (
+    <div>
+      <NavDots questions={questions} answers={answers} current={focusedQ} onGo={i => { setFocusedQ(i); questionRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }} color={color} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {questions.map((q, qi) => {
+          const isFocused = focusedQ === qi
+          const rots = rotations[qi] || []
+          return (
+            <div key={qi} ref={el => questionRefs.current[qi] = el} onClick={() => setFocusedQ(qi)} style={{ borderRadius: 12, outline: isFocused ? `2px solid ${color}` : '2px solid transparent', outlineOffset: 2, transition: 'outline 0.15s', cursor: 'pointer' }}>
+              <Card>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12 }}>
+                  <span style={{ color: T.muted, fontSize: 13, minWidth: 22, flexShrink: 0, lineHeight: '20px' }}>{qi + 1}.</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: T.muted, fontSize: 13, marginBottom: 16 }}>Welche Figur ergibt sich aus diesen Teilen?</div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {(q.pieces.normalized || []).map((p, i) => (
+                        <PieceTile key={i} data={p} rotation={rots[i] || 0} color={PC[i % 9]} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {q.opts.map((o, i) => {
+                  const sel = answers[qi] === i
+                  return (
+                    <button key={i} onClick={() => onAnswer(qi, i)} style={{
+                      display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                      background: sel ? `${color}22` : T.surf2,
+                      border: `1px solid ${sel ? color : T.border}`, borderRadius: 10,
+                      color: T.text, cursor: 'pointer', padding: '10px 16px', fontSize: 14,
+                      marginBottom: 8, transition: 'all 0.15s'
+                    }}>
+                      <span style={{ color: T.yellow, fontWeight: 'bold', minWidth: 22 }}>{OPTS[i]}</span>
+                      {o.shape ? (<><AnswerSVG shape={o.shape} size={56} /><span>{o.shape.label}</span></>) : <span style={{ color: T.muted }}>Keine der Figuren ist richtig.</span>}
+                      {sel && <span style={{ color, marginLeft: 'auto' }}>✓</span>}
+                    </button>
+                  )
+                })}
+              </Card>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Component ─────────────────────────────────────────────────────────────
 export default function Figuren({ onBack }) {
   const [mode, setMode] = useState('settings')
   const [count, setCount] = useState(15)
   const [quizType, setQuizType] = useState('figuren')
-  const [question, setQuestion] = useState(null)
-  const [rotations, setRotations] = useState([])
-  const [selected, setSelected] = useState(null)
-  const [score, setScore] = useState(0)
-  const [total, setTotal] = useState(0)
-  const [remaining, setRemaining] = useState(0)
+  const [questions, setQuestions] = useState([])
+  const [answers, setAnswers] = useState([])
   const [done, setDone] = useState(false)
+  // Winkel one-at-a-time state
   const [showFb, setShowFb] = useState(false)
   const [fbReady, setFbReady] = useState(false)
+  const [selected, setSelected] = useState(null)
+  const [question, setQuestion] = useState(null)
+  const [remaining, setRemaining] = useState(0)
+  const [winkelScore, setWinkelScore] = useState(0)
+  const [winkelTotal, setWinkelTotal] = useState(0)
   const lastWinkelDeg = useRef(null)
   const endless = count === 0
 
-  function newQ(rem, type) {
-    const qt = type ?? quizType
-    if (qt === 'winkel') {
-      const q = makeWinkelTask(lastWinkelDeg.current)
-      lastWinkelDeg.current = q.deg
-      q.display = { rotation: rnd(0,359), cx: rnd(75,125), cy: rnd(85,140), rayLen: rnd(55,85) }
-      setQuestion(q); setRotations(['_']); setSelected(null); setShowFb(false); setFbReady(false)
+  // Figuren mode: all questions upfront
+  function startGame() {
+    if (quizType === 'figuren') {
+      const n = endless ? 100 : count
+      const qs = Array.from({ length: n }, () => makeTask())
+      setQuestions(qs)
+      setAnswers(Array(n).fill(null))
+      setDone(false)
+      setMode('game')
     } else {
-      const q = makeTask()
+      setWinkelScore(0); setWinkelTotal(0); setDone(false); lastWinkelDeg.current = null
+      const q = makeWinkelTask(null)
+      lastWinkelDeg.current = q.deg
+      q.display = { rotation: rnd(0, 359), cx: rnd(75, 125), cy: rnd(85, 140), rayLen: rnd(55, 85) }
       setQuestion(q); setSelected(null); setShowFb(false); setFbReady(false)
-      setRotations(q.pieces.normalized.map(() => {
-        const r = Math.random()
-        if (r < 0.15) return rnd(8,35)
-        if (r < 0.30) return rnd(325,352)
-        if (r < 0.55) return rnd(40,140)
-        if (r < 0.80) return rnd(220,320)
-        return rnd(145,215)
-      }))
+      setRemaining(count); setMode('winkel')
     }
+  }
+
+  function finishFiguren() {
+    const sc = answers.filter((a, i) => a === questions[i]?.correctIdx).length
+    const tot = questions.length
+    if (!endless) saveStat('figuren', sc, tot)
+    setDone(true)
+  }
+
+  // Escape key for Figuren game mode
+  useEffect(() => {
+    if (mode !== 'game' || done) return
+    const h = e => { if (e.key === 'Escape') { endless ? finishFiguren() : setMode('settings') } }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [mode, done, endless])
+
+  // Winkel answer/next
+  const advanceRef = useRef(null)
+
+  function winkelAnswer(i) {
+    if (selected !== null) return
+    const correct = i === question.correctIdx
+    setSelected(i); if (correct) setWinkelScore(s => s + 1); setWinkelTotal(t => t + 1)
+    if (endless) setTimeout(() => { setShowFb(true); setTimeout(() => setFbReady(true), 200) }, 80)
+    else advanceRef.current = setTimeout(() => winkelNextQ(), 300)
+  }
+
+  function winkelNextQ() {
+    setFbReady(false); setShowFb(false); setSelected(null)
+    const rem = remaining - 1
+    if (!endless && rem <= 0) {
+      if (!endless) saveStat('figuren', winkelScore, winkelTotal)
+      setDone(true); return
+    }
+    const q = makeWinkelTask(lastWinkelDeg.current)
+    lastWinkelDeg.current = q.deg
+    q.display = { rotation: rnd(0, 359), cx: rnd(75, 125), cy: rnd(85, 140), rayLen: rnd(55, 85) }
+    setQuestion(q); setSelected(null); setShowFb(false); setFbReady(false)
     setRemaining(rem)
   }
 
-  function startGame() { setScore(0); setTotal(0); setDone(false); lastWinkelDeg.current = null; newQ(count, quizType); setMode('game') }
-
-  const advanceRef = useRef(null)
-
-  function answer(i) {
-    if (selected !== null) return
-    const correct = i === question.correctIdx
-    setSelected(i); if (correct) setScore(s=>s+1); setTotal(t=>t+1)
-    if (endless) setTimeout(() => { setShowFb(true); setTimeout(() => setFbReady(true), 200) }, 80)
-    else advanceRef.current = setTimeout(() => nextQ(), 300)
-  }
-
-  function nextQ() {
-    setFbReady(false); setShowFb(false); setSelected(null)
-    const rem = remaining - 1
-    if (!endless && rem <= 0) { setDone(true); return }
-    newQ(rem)
-  }
-
-  useEffect(() => { if (done && !endless) saveStat('figuren', score, total) }, [done, endless, score, total])
-
+  // Winkel keyboard effects
   useEffect(() => {
     if (fbReady) {
       const h = e => {
-        if (e.key === 'Escape') { endless?setDone(true):setMode('settings'); return }
-        nextQ()
+        if (e.key === 'Escape') { endless ? setDone(true) : setMode('settings'); return }
+        winkelNextQ()
       }
       window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h)
     }
-    if (!showFb) {
+    if (!showFb && mode === 'winkel') {
       const h = e => {
-        if (e.key === 'Escape') { endless?setDone(true):setMode('settings'); return }
-        if (!endless && selected !== null) { clearTimeout(advanceRef.current); nextQ(); return }
-        const i=KEYS.indexOf(e.key.toLowerCase()); if(i>=0&&i<5) answer(i)
+        if (e.key === 'Escape') { endless ? setDone(true) : setMode('settings'); return }
+        if (!endless && selected !== null) { clearTimeout(advanceRef.current); winkelNextQ(); return }
+        const i = KEYS.indexOf(e.key.toLowerCase()); if (i >= 0 && i < 5) winkelAnswer(i)
       }
       window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h)
     }
-  }, [answer, showFb, fbReady, endless, selected])
+  }, [mode, showFb, fbReady, endless, selected, question, remaining])
 
-  const skRows=[
-    [{action:()=>setCount(15)},{action:()=>setCount(0)}],
-    [{action:()=>setQuizType('figuren')},{action:()=>setQuizType('winkel')}],
+  function figurenAnswer(qi, i) {
+    if (done) return
+    const next = [...answers]
+    if (next[qi] === i) { next[qi] = null }
+    else { next[qi] = i }
+    setAnswers(next)
+  }
+
+  const figSc = answers.filter((a, i) => a === questions[i]?.correctIdx).length
+  const figTot = answers.filter(a => a !== null).length
+
+  const skRows = [
+    [{ action: () => setCount(15) }, { action: () => setCount(0) }],
+    [{ action: () => setQuizType('figuren') }, { action: () => setQuizType('winkel') }],
   ]
-  const{isFocused:skF,isStartFocused:skS}=useSettingsKeyboard(skRows,startGame,onBack,mode==='settings')
+  const { isFocused: skF, isStartFocused: skS } = useSettingsKeyboard(skRows, startGame, onBack, mode === 'settings')
 
   if (mode === 'settings') return (
-    <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
-      <BackBtn onBack={onBack}/>
-      <div style={{color:T.teal,fontSize:24,fontWeight:'bold',marginBottom:24}}>Figuren zusammensetzen</div>
+    <div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 20px' }}>
+      <BackBtn onBack={onBack} />
+      <div style={{ color: T.teal, fontSize: 24, fontWeight: 'bold', marginBottom: 24 }}>Figuren zusammensetzen</div>
       <Card>
-        <div style={{marginBottom:20}}>
-          <div style={{color:T.muted,fontSize:13,marginBottom:10}}>Anzahl Aufgaben:</div>
-          <div style={{display:'flex',gap:8}}>
-            {[{v:15,l:'15  (20 Min)'},{v:0,l:'∞  Endlosmodus'}].map((o,i) => (
-              <button key={o.v} onClick={() => setCount(o.v)} style={{background:count===o.v?`${T.teal}22`:T.surf2,border:`1px solid ${count===o.v?T.teal:T.border}`,borderRadius:8,color:count===o.v?T.teal:T.text,cursor:'pointer',padding:'8px 18px',fontSize:14,boxShadow:skF(0,i)?`0 0 0 2px ${T.teal}`:'none'}}>{o.l}</button>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ color: T.muted, fontSize: 13, marginBottom: 10 }}>Anzahl Aufgaben:</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[{ v: 15, l: '15  (20 Min)' }, { v: 0, l: '∞  Endlosmodus' }].map((o, i) => (
+              <button key={o.v} onClick={() => setCount(o.v)} style={{ background: count === o.v ? `${T.teal}22` : T.surf2, border: `1px solid ${count === o.v ? T.teal : T.border}`, borderRadius: 8, color: count === o.v ? T.teal : T.text, cursor: 'pointer', padding: '8px 18px', fontSize: 14, boxShadow: skF(0, i) ? `0 0 0 2px ${T.teal}` : 'none' }}>{o.l}</button>
             ))}
           </div>
         </div>
-        <div style={{marginBottom:24}}>
-          <div style={{color:T.muted,fontSize:13,marginBottom:10}}>Übungsmodus:</div>
-          <div style={{display:'flex',gap:8}}>
-            {[{v:'figuren',l:'Figuren zusammensetzen'},{v:'winkel',l:'Winkel üben'}].map((o,i) => (
-              <button key={o.v} onClick={() => setQuizType(o.v)} style={{background:quizType===o.v?`${T.teal}22`:T.surf2,border:`1px solid ${quizType===o.v?T.teal:T.border}`,borderRadius:8,color:quizType===o.v?T.teal:T.text,cursor:'pointer',padding:'8px 18px',fontSize:14,boxShadow:skF(1,i)?`0 0 0 2px ${T.teal}`:'none'}}>{o.l}</button>
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ color: T.muted, fontSize: 13, marginBottom: 10 }}>Übungsmodus:</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[{ v: 'figuren', l: 'Figuren zusammensetzen' }, { v: 'winkel', l: 'Winkel üben' }].map((o, i) => (
+              <button key={o.v} onClick={() => setQuizType(o.v)} style={{ background: quizType === o.v ? `${T.teal}22` : T.surf2, border: `1px solid ${quizType === o.v ? T.teal : T.border}`, borderRadius: 8, color: quizType === o.v ? T.teal : T.text, cursor: 'pointer', padding: '8px 18px', fontSize: 14, boxShadow: skF(1, i) ? `0 0 0 2px ${T.teal}` : 'none' }}>{o.l}</button>
             ))}
           </div>
         </div>
-        <button onClick={startGame} style={{background:T.teal,border:'none',borderRadius:10,color:'#000',cursor:'pointer',padding:'14px 32px',fontSize:16,fontWeight:'bold',boxShadow:skS()?`0 0 0 3px ${T.teal}88`:'none'}}>Starten</button>
-        <div style={{color:T.muted,fontSize:11,marginTop:12}}>← → Auswahl · ↑↓ Zeile · Enter bestätigen · Esc zurück</div>
+        <button onClick={startGame} style={{ background: T.teal, border: 'none', borderRadius: 10, color: '#000', cursor: 'pointer', padding: '14px 32px', fontSize: 16, fontWeight: 'bold', boxShadow: skS() ? `0 0 0 3px ${T.teal}88` : 'none' }}>Starten</button>
+        <div style={{ color: T.muted, fontSize: 11, marginTop: 12 }}>← → Auswahl · ↑↓ Zeile · Enter bestätigen · Esc zurück</div>
       </Card>
     </div>
   )
 
   if (done) return (
-    <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
-      <BackBtn onBack={onBack}/>
-      <ResultScreen correct={score} total={total} onRetry={() => setMode('settings')} onBack={onBack}/>
+    <div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 20px' }}>
+      <BackBtn onBack={onBack} />
+      <ResultScreen correct={quizType === 'figuren' || mode === 'game' ? figSc : winkelScore} total={quizType === 'figuren' || mode === 'game' ? figTot : winkelTotal} onRetry={() => setMode('settings')} onBack={onBack} />
     </div>
   )
 
-  const q = question; if (!q || !rotations.length) return null
-  const getState = i => selected===null?'idle':i===q.correctIdx?'correct':i===selected?'wrong':'idle'
-  const btnStyle = i => ({
-    display:'flex',alignItems:'center',gap:14,width:'100%',
-    background:selected===null?T.surf2:i===q.correctIdx?`${T.green}22`:i===selected?`${T.red}22`:T.surf2,
-    border:`1px solid ${selected===null?T.border:i===q.correctIdx?T.green:i===selected?T.red:T.border}`,
-    borderRadius:10,color:T.text,cursor:selected===null?'pointer':'default',
-    padding:'10px 16px',fontSize:14,marginBottom:8,transition:'all 0.15s'
-  })
+  // ── Figuren mode: vertical scroll ──
+  if (mode === 'game') return (
+    <div style={{ maxWidth: 840, margin: '0 auto', padding: '24px 20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          <button onClick={() => endless ? finishFiguren() : setMode('settings')} style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 8, color: T.muted, cursor: 'pointer', padding: '6px 14px', fontSize: 13 }}>← Zurück</button>
+          <div style={{ color: T.teal, fontSize: 18, fontWeight: 'bold' }}>Figuren zusammensetzen</div>
+        </div>
+        <ScoreBar score={figSc} total={figTot} color={T.teal} />
+      </div>
+      {!endless && <ProgressBar current={figTot + 1} total={count} color={T.teal} />}
+      <FigurenQuiz questions={questions} answers={answers} onAnswer={figurenAnswer} color={T.teal} />
+      <div style={{ marginTop: 12 }}>
+        <KeyHint />
+      </div>
+      <div style={{ marginTop: 24, textAlign: 'center' }}>
+        <button onClick={finishFiguren} style={{ background: T.teal, border: 'none', borderRadius: 10, color: '#000', cursor: 'pointer', padding: '14px 32px', fontSize: 16, fontWeight: 'bold' }}>Ergebnis anzeigen ({figTot}/{questions.length})</button>
+      </div>
+    </div>
+  )
 
-  // ── Winkel mode ──
+  // ── Winkel mode (one-at-a-time, unchanged) ──
+  const q = question; if (!q) return null
+  const getState = i => selected === null ? 'idle' : i === q.correctIdx ? 'correct' : i === selected ? 'wrong' : 'idle'
+  const btnStyle = i => ({
+    display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+    background: selected === null ? T.surf2 : i === q.correctIdx ? `${T.green}22` : i === selected ? `${T.red}22` : T.surf2,
+    border: `1px solid ${selected === null ? T.border : i === q.correctIdx ? T.green : i === selected ? T.red : T.border}`,
+    borderRadius: 10, color: T.text, cursor: selected === null ? 'pointer' : 'default',
+    padding: '10px 16px', fontSize: 14, marginBottom: 8, transition: 'all 0.15s'
+  })
   const wFb = WINKEL_DATA.find(w => w.deg === q.deg)
   const wInnen = WINKEL_DATA.filter(w => w.type === 'innen')
   const wSpitze = WINKEL_DATA.filter(w => w.type === 'spitze')
-  if (quizType === 'winkel') return (
-    <div style={{maxWidth:720,margin:'0 auto',padding:'24px 20px'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-        <div style={{display:'flex',gap:16,alignItems:'center'}}>
-          <button onClick={() => endless?setDone(true):setMode('settings')} style={{background:'none',border:`1px solid ${T.border}`,borderRadius:8,color:T.muted,cursor:'pointer',padding:'6px 14px',fontSize:13}}>← Zurück</button>
-          <div style={{color:T.teal,fontSize:18,fontWeight:'bold'}}>Winkel üben</div>
+  return (
+    <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          <button onClick={() => endless ? setDone(true) : setMode('settings')} style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 8, color: T.muted, cursor: 'pointer', padding: '6px 14px', fontSize: 13 }}>← Zurück</button>
+          <div style={{ color: T.teal, fontSize: 18, fontWeight: 'bold' }}>Winkel üben</div>
         </div>
-        <ScoreBar score={score} total={total} color={T.teal}/>
+        <ScoreBar score={winkelScore} total={winkelTotal} color={T.teal} />
       </div>
-      {!endless&&<ProgressBar current={count-remaining+1} total={count} color={T.teal}/>}
-      <Card style={{marginBottom:16}}>
-        <div style={{color:T.muted,fontSize:13,marginBottom:16}}>Zu welchem regelmäßigen Vieleck gehört dieser Winkel?</div>
-        <div style={{display:'flex',justifyContent:'center'}}>
-          <WinkelDisplay deg={q.deg} display={q.display}/>
+      {!endless && <ProgressBar current={count - remaining + 1} total={count} color={T.teal} />}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ color: T.muted, fontSize: 13, marginBottom: 16 }}>Zu welchem regelmäßigen Vieleck gehört dieser Winkel?</div>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <WinkelDisplay deg={q.deg} display={q.display} />
         </div>
       </Card>
       <Card>
         {q.opts.map((o, i) => (
-          <button key={i} onClick={() => answer(i)} style={btnStyle(i)}>
-            <span style={{color:T.yellow,fontWeight:'bold',minWidth:22}}>{OPTS[i]}</span>
-            {o ? <span>{o.label}</span> : <span style={{color:T.muted}}>Keine Antwort ist richtig.</span>}
-            {selected!==null && i===q.correctIdx && <span style={{color:T.green,marginLeft:'auto'}}>✓</span>}
-            {selected!==null && i===selected && i!==q.correctIdx && <span style={{color:T.red,marginLeft:'auto'}}>✗</span>}
+          <button key={i} onClick={() => winkelAnswer(i)} style={btnStyle(i)}>
+            <span style={{ color: T.yellow, fontWeight: 'bold', minWidth: 22 }}>{OPTS[i]}</span>
+            {o ? <span>{o.label}</span> : <span style={{ color: T.muted }}>Keine Antwort ist richtig.</span>}
+            {selected !== null && i === q.correctIdx && <span style={{ color: T.green, marginLeft: 'auto' }}>✓</span>}
+            {selected !== null && i === selected && i !== q.correctIdx && <span style={{ color: T.red, marginLeft: 'auto' }}>✗</span>}
           </button>
         ))}
-        {(!showFb || !endless) && selected===null && <KeyHint/>}
+        {(!showFb || !endless) && selected === null && <KeyHint />}
         {showFb && endless && (
-          <div style={{marginTop:16,background:T.surf2,borderRadius:12,padding:'16px 20px'}}>
-            <div style={{fontSize:14,marginBottom:6}}>
-              <span style={{color:T.muted}}>Dieser Winkel ({q.deg}°) ist der {q.type === 'innen' ? 'Innenwinkel' : 'Spitzenwinkel'} eines </span>
-              <span style={{color:T.green,fontWeight:'bold'}}>{wFb?.label}</span>
+          <div style={{ marginTop: 16, background: T.surf2, borderRadius: 12, padding: '16px 20px' }}>
+            <div style={{ fontSize: 14, marginBottom: 6 }}>
+              <span style={{ color: T.muted }}>Dieser Winkel ({q.deg}°) ist der {q.type === 'innen' ? 'Innenwinkel' : 'Spitzenwinkel'} eines </span>
+              <span style={{ color: T.green, fontWeight: 'bold' }}>{wFb?.label}</span>
             </div>
-            <div style={{color:T.muted,fontSize:12,fontFamily:'monospace',marginBottom:14}}>
+            <div style={{ color: T.muted, fontSize: 12, fontFamily: 'monospace', marginBottom: 14 }}>
               {q.type === 'innen'
-                ? `(${q.sides}−2) × 180° ÷ ${q.sides} = ${(q.sides-2)*180}° ÷ ${q.sides} = ${q.deg}°`
-                : `180° − 720° ÷ ${q.sides} = 180° − ${Math.round(720/q.sides*100)/100}° = ${q.deg}°`}
+                ? `(${q.sides}−2) × 180° ÷ ${q.sides} = ${(q.sides - 2) * 180}° ÷ ${q.sides} = ${q.deg}°`
+                : `180° − 720° ÷ ${q.sides} = 180° − ${Math.round(720 / q.sides * 100) / 100}° = ${q.deg}°`}
             </div>
-            <div style={{marginBottom:14}}>
-              <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:6,alignItems:'center'}}>
-                <span style={{color:T.muted,fontSize:10,minWidth:90}}>Innenwinkel:</span>
-                {wInnen.map(w=>(
-                  <span key={w.deg} style={{fontSize:11,padding:'3px 9px',borderRadius:6,background:w.deg===q.deg?`${T.teal}22`:T.bg,color:w.deg===q.deg?T.teal:T.muted,border:`1px solid ${w.deg===q.deg?T.teal:T.border}`}}>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6, alignItems: 'center' }}>
+                <span style={{ color: T.muted, fontSize: 10, minWidth: 90 }}>Innenwinkel:</span>
+                {wInnen.map(w => (
+                  <span key={w.deg} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 6, background: w.deg === q.deg ? `${T.teal}22` : T.bg, color: w.deg === q.deg ? T.teal : T.muted, border: `1px solid ${w.deg === q.deg ? T.teal : T.border}` }}>
                     {w.label}: {w.deg}°
                   </span>
                 ))}
               </div>
-              <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
-                <span style={{color:T.muted,fontSize:10,minWidth:90}}>Spitzenwinkel:</span>
-                {wSpitze.map(w=>(
-                  <span key={w.deg} style={{fontSize:11,padding:'3px 9px',borderRadius:6,background:w.deg===q.deg?`${T.teal}22`:T.bg,color:w.deg===q.deg?T.teal:T.muted,border:`1px solid ${w.deg===q.deg?T.teal:T.border}`}}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ color: T.muted, fontSize: 10, minWidth: 90 }}>Spitzenwinkel:</span>
+                {wSpitze.map(w => (
+                  <span key={w.deg} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 6, background: w.deg === q.deg ? `${T.teal}22` : T.bg, color: w.deg === q.deg ? T.teal : T.muted, border: `1px solid ${w.deg === q.deg ? T.teal : T.border}` }}>
                     {w.label}: {w.deg}°
                   </span>
                 ))}
               </div>
             </div>
-            <button onClick={nextQ} style={{background:T.teal,border:'none',borderRadius:8,color:'#000',cursor:'pointer',padding:'8px 20px',fontSize:14,fontWeight:'bold'}}>
-              Weiter <span style={{opacity:0.6,fontSize:12}}>(beliebige Taste)</span>
+            <button onClick={winkelNextQ} style={{ background: T.teal, border: 'none', borderRadius: 8, color: '#000', cursor: 'pointer', padding: '8px 20px', fontSize: 14, fontWeight: 'bold' }}>
+              Weiter <span style={{ opacity: 0.6, fontSize: 12 }}>(beliebige Taste)</span>
             </button>
           </div>
         )}
@@ -483,56 +609,5 @@ export default function Figuren({ onBack }) {
     </div>
   )
 
-  // ── Figuren mode ──
-  return (
-    <div style={{maxWidth:840,margin:'0 auto',padding:'24px 20px'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-        <div style={{display:'flex',gap:16,alignItems:'center'}}>
-          <button onClick={() => endless?setDone(true):setMode('settings')} style={{background:'none',border:`1px solid ${T.border}`,borderRadius:8,color:T.muted,cursor:'pointer',padding:'6px 14px',fontSize:13}}>← Zurück</button>
-          <div style={{color:T.teal,fontSize:18,fontWeight:'bold'}}>Figuren zusammensetzen</div>
-        </div>
-        <ScoreBar score={score} total={total} color={T.teal}/>
-      </div>
-      {!endless&&<ProgressBar current={count-remaining+1} total={count} color={T.teal}/>}
-      <Card style={{marginBottom:16}}>
-        <div style={{color:T.muted,fontSize:13,marginBottom:16}}>Welche Figur ergibt sich aus diesen Teilen?</div>
-        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-          {q.pieces.normalized.map((p, i) => (
-            <PieceTile key={i} data={p} rotation={rotations[i]||0} color={PC[i%9]}/>
-          ))}
-        </div>
-      </Card>
-      <Card>
-        {q.opts.map((o, i) => (
-          <button key={i} onClick={() => answer(i)} style={btnStyle(i)}>
-            <span style={{color:T.yellow,fontWeight:'bold',minWidth:22}}>{OPTS[i]}</span>
-            {o.shape ? (<><AnswerSVG shape={o.shape} size={62}/><span>{o.shape.label}</span></>) : <span style={{color:T.muted}}>Keine Antwort ist richtig.</span>}
-            {selected!==null && i===q.correctIdx && <span style={{color:T.green,marginLeft:'auto'}}>✓</span>}
-            {selected!==null && i===selected && i!==q.correctIdx && <span style={{color:T.red,marginLeft:'auto'}}>✗</span>}
-          </button>
-        ))}
-        {(!showFb || !endless) && selected===null && <KeyHint/>}
-        {showFb && endless && (
-          <div style={{marginTop:16,background:T.surf2,borderRadius:12,padding:'16px 20px'}}>
-            <div style={{color:T.muted,fontSize:12,marginBottom:12}}>
-              {q.correctIdx === 4
-                ? `Keine Antwort ist richtig. Die Teile bilden ein ${q.targetShape?.label}, aber diese Option war nicht verfügbar.`
-                : `Richtige Antwort: ${q.targetShape?.label}`}
-            </div>
-            {q.targetShape && (
-              <div style={{marginBottom:12}}>
-                <div style={{color:T.muted,fontSize:11,marginBottom:6}}>Zusammengesetzt:</div>
-                <div style={{background:T.bg,borderRadius:10,padding:8,display:'inline-block'}}>
-                  <AssembledView task={q} size={200}/>
-                </div>
-              </div>
-            )}
-            <button onClick={nextQ} style={{background:T.teal,border:'none',borderRadius:8,color:'#000',cursor:'pointer',padding:'8px 20px',fontSize:14,fontWeight:'bold'}}>
-              Weiter <span style={{opacity:0.6,fontSize:12}}>(beliebige Taste)</span>
-            </button>
-          </div>
-        )}
-      </Card>
-    </div>
-  )
+  return null
 }
