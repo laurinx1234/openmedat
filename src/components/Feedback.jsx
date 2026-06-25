@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { T } from '../theme.js'
-
-const REDDIT_DM = 'https://www.reddit.com/message/compose/?to=LongjumpingMethod461'
+import { REDDIT_DM } from '../data/links.js'
 
 export default function Feedback() {
   const [open, setOpen] = useState(false)

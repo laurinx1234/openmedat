@@ -5,7 +5,7 @@ import { makeTask as makeZahlen } from './Zahlenfolgen.jsx'
 import { makeTask as makeWort } from './Wortfluessigkeit.jsx'
 import { makeTask as makeImpl } from './Implikationen.jsx'
 import { makeTask as makeFigur, ptsToPath, arcPath, regPoly, PC } from './Figuren.jsx'
-import { genCardPool, fetchPhotos, makeQuestion, AusweisCard, Avatar } from './Allergieausweise.jsx'
+import { genCardPool, fetchPhotos, makeQuestion, AusweisCard } from './Allergieausweise.jsx'
 
 // ─── Simulation config ────────────────────────────────────────────────────────
 const PHASES = [
@@ -82,7 +82,7 @@ function ReviewPanel({categories,onBack}){
         {q.word&&<div style={{color:T.muted,fontSize:15,marginTop:8}}>Wort: <span style={{color:cat.color,fontWeight:'bold',fontSize:20,letterSpacing:4}}>{q.word.toUpperCase()}</span></div>}
         {q.showAvatar&&q.card&&(
           <div style={{display:'flex',justifyContent:'center',marginTop:12}}>
-            <div style={{background:T.surf2,borderRadius:16,padding:8,overflow:'hidden',width:80,height:80,display:'flex',alignItems:'center',justifyContent:'center'}}><Avatar card={q.card} size={64}/></div>
+            <img src={q.card.photoUrl} width={64} height={64} alt="" style={{borderRadius:'50%',objectFit:'cover',objectPosition:'center top'}}/>
           </div>
         )}
       </Card>
@@ -605,7 +605,7 @@ export default function Simulation({onBack}){
         <div style={{maxWidth:720,margin:'0 auto',padding:'20px 20px'}}>
           <NavDots questions={allergQuestions} answers={allergAnswers} current={allergCurrent} onGo={setAllergCurrent} color={T.green}/>
           <Card style={{marginBottom:16}}>
-            {q.showAvatar&&<div style={{display:'flex',justifyContent:'center',marginBottom:16}}><div style={{background:T.surf2,borderRadius:16,padding:8,overflow:'hidden',width:116,height:116,display:'flex',alignItems:'center',justifyContent:'center'}}><Avatar card={q.card} size={100}/></div></div>}
+            {q.showAvatar&&<div style={{display:'flex',justifyContent:'center',marginBottom:16}}><img src={q.card.photoUrl} width={100} height={100} alt="" style={{borderRadius:'50%',objectFit:'cover',objectPosition:'center top'}}/></div>}
             <div style={{fontSize:17,color:T.text,marginBottom:8}}>{q.question}</div>
             {!q.showAvatar&&<div style={{marginTop:8,color:T.muted,fontSize:13}}>Person: <span style={{color:T.text}}>{q.card.name}</span></div>}
           </Card>

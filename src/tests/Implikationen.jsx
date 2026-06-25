@@ -1,40 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { T } from '../theme.js'
 import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, ScoreBar, useTimer, useSettingsKeyboard, shuffle, OPTS, KEYS, saveStat } from '../components/Shared.jsx'
-
-const NOUNS=["Hunde","Katzen","Vögel","Fische","Elefanten","Löwen","Bären","Wölfe","Pferde","Schlangen","Adler","Delphine","Krokodile","Papageien","Tiger","Gorillas","Flamingos","Pinguine","Wale","Haie","Ärzte","Lehrer","Kinder","Studenten","Soldaten","Musiker","Maler","Sportler","Künstler","Richter","Chirurgen","Ingenieure","Bankräuber","Pianisten","Tänzer","Sänger","Wissenschaftler","Autos","Bücher","Bäume","Steine","Pflanzen","Roboter","Maschinen","Schiffe","Flugzeuge","Computer","Pilze","Algen","Bakterien","Insekten","Reptilien","Lebewesen","Objekte","Kristalle","Planeten","Rosen","Tulpen","Orchideen","Kakteen","Farne","Korallen","Häuser","Türme","Burgen","Kathedralen","Pyramiden","Brücken","Gauner","Einbrecher","Detektive","Spione","Piraten","Ritter","Zauberer","Drachen"]
-
-const VALID_MODI=[
-  {name:'Barbara',   p1:(s,m,c)=>`Alle ${m} sind ${c}.`,          p2:(s,m,c)=>`Alle ${s} sind ${m}.`,               concl:'alle',         w:4},
-  {name:'Celarent',  p1:(s,m,c)=>`Alle ${m} sind keine ${c}.`,    p2:(s,m,c)=>`Alle ${s} sind ${m}.`,               concl:'kein',         w:4},
-  {name:'Darii',     p1:(s,m,c)=>`Alle ${m} sind ${c}.`,          p2:(s,m,c)=>`Einige ${s} sind ${m}.`,             concl:'einige',       w:4},
-  {name:'Ferio',     p1:(s,m,c)=>`Alle ${m} sind keine ${c}.`,    p2:(s,m,c)=>`Einige ${s} sind ${m}.`,             concl:'einige_nicht', w:4},
-  {name:'Cesare',    p1:(s,m,c)=>`Alle ${c} sind keine ${m}.`,    p2:(s,m,c)=>`Alle ${s} sind ${m}.`,               concl:'kein',         w:3},
-  {name:'Camestres', p1:(s,m,c)=>`Alle ${c} sind ${m}.`,          p2:(s,m,c)=>`Alle ${s} sind keine ${m}.`,         concl:'kein',         w:3},
-  {name:'Festino',   p1:(s,m,c)=>`Alle ${c} sind keine ${m}.`,    p2:(s,m,c)=>`Einige ${s} sind ${m}.`,             concl:'einige_nicht', w:3},
-  {name:'Baroco',    p1:(s,m,c)=>`Alle ${c} sind ${m}.`,          p2:(s,m,c)=>`Einige ${s} sind keine ${m}.`,       concl:'einige_nicht', w:3},
-  {name:'Darapti',   p1:(s,m,c)=>`Alle ${m} sind ${c}.`,          p2:(s,m,c)=>`Alle ${m} sind ${s}.`,               concl:'einige',       w:3},
-  {name:'Felapton',  p1:(s,m,c)=>`Alle ${m} sind keine ${c}.`,    p2:(s,m,c)=>`Alle ${m} sind ${s}.`,               concl:'einige_nicht', w:3},
-  {name:'Disamis',   p1:(s,m,c)=>`Einige ${m} sind ${c}.`,        p2:(s,m,c)=>`Alle ${m} sind ${s}.`,               concl:'einige',       w:3},
-  {name:'Datisi',    p1:(s,m,c)=>`Alle ${m} sind ${c}.`,          p2:(s,m,c)=>`Einige ${m} sind ${s}.`,             concl:'einige',       w:3},
-  {name:'Bocardo',   p1:(s,m,c)=>`Einige ${m} sind keine ${c}.`,  p2:(s,m,c)=>`Alle ${m} sind ${s}.`,               concl:'einige_nicht', w:3},
-  {name:'Ferison',   p1:(s,m,c)=>`Alle ${m} sind keine ${c}.`,    p2:(s,m,c)=>`Einige ${m} sind ${s}.`,             concl:'einige_nicht', w:3},
-  {name:'Bamali',    p1:(s,m,c)=>`Alle ${c} sind ${m}.`,          p2:(s,m,c)=>`Alle ${m} sind ${s}.`,               concl:'einige',       w:3},
-  {name:'Calemes',   p1:(s,m,c)=>`Alle ${c} sind ${m}.`,          p2:(s,m,c)=>`Alle ${m} sind keine ${s}.`,         concl:'kein',         w:3},
-  {name:'Dimatis',   p1:(s,m,c)=>`Einige ${c} sind ${m}.`,        p2:(s,m,c)=>`Alle ${m} sind ${s}.`,               concl:'einige',       w:3},
-  {name:'Fesapo',    p1:(s,m,c)=>`Alle ${c} sind keine ${m}.`,    p2:(s,m,c)=>`Alle ${m} sind ${s}.`,               concl:'einige_nicht', w:3},
-  {name:'Fresison',  p1:(s,m,c)=>`Alle ${c} sind keine ${m}.`,    p2:(s,m,c)=>`Einige ${m} sind ${s}.`,             concl:'einige_nicht', w:3},
-]
-const INVALID_MODI=[
-  {name:'Undistributed Middle A', p1:(s,m,c)=>`Einige ${m} sind ${c}.`,     p2:(s,m,c)=>`Alle ${s} sind ${m}.`,          w:4},
-  {name:'Undistributed Middle B', p1:(s,m,c)=>`Einige ${m} sind ${c}.`,     p2:(s,m,c)=>`Einige ${s} sind ${m}.`,        w:4},
-  {name:'Illicit Major',          p1:(s,m,c)=>`Alle ${m} sind ${c}.`,        p2:(s,m,c)=>`Alle ${s} sind keine ${m}.`,    w:4},
-  {name:'Negative Premises',      p1:(s,m,c)=>`Alle ${m} sind keine ${c}.`, p2:(s,m,c)=>`Alle ${s} sind keine ${m}.`,    w:3},
-  {name:'Weak Fig3',              p1:(s,m,c)=>`Einige ${m} sind ${c}.`,     p2:(s,m,c)=>`Einige ${m} sind ${s}.`,        w:3},
-  {name:'Invalid Fig2',           p1:(s,m,c)=>`Einige ${c} sind ${m}.`,     p2:(s,m,c)=>`Alle ${s} sind ${m}.`,          w:3},
-  {name:'Weak Affirmative',       p1:(s,m,c)=>`Alle ${m} sind ${c}.`,        p2:(s,m,c)=>`Einige ${s} sind keine ${m}.`,  w:3},
-  {name:'Weak Fig4',              p1:(s,m,c)=>`Einige ${c} sind ${m}.`,     p2:(s,m,c)=>`Einige ${m} sind ${s}.`,        w:3},
-]
+import { NOUNS, VALID_MODI, INVALID_MODI } from '../data/syllogismen.js'
 
 function wPick(items){const tot=items.reduce((s,i)=>s+i.w,0);let r=Math.random()*tot;for(const it of items){r-=it.w;if(r<=0)return it}return items[items.length-1]}
 

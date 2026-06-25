@@ -3,29 +3,24 @@ import { T } from '../theme.js'
 import { Card, BackBtn, TimerBadge, OptionBtn, KeyHint, NavDots, useTimer, useSettingsKeyboard, rnd, pick, shuffle, OPTS, KEYS, playBeep } from '../components/Shared.jsx'
 import { setSession, getSession, clearSession, isQuizReady } from '../allergStore.js'
 import { navigate } from '../router.js'
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-const LAENDER=["Österreich","Deutschland","Schweiz","Frankreich","Italien","Spanien","Portugal","Schweden","Norwegen","Finnland","Dänemark","Polen","Tschechien","Ungarn","Rumänien","Kroatien","Serbien","Slowenien","Slowakei","Bulgarien","Griechenland","Türkei","Russland","Ukraine","Litauen","Lettland","Estland","Georgien","Armenien","Japan","China","Indien","Pakistan","Iran","Irak","Israel","Ägypten","Marokko","Tunesien","Kenia","Südafrika","Nigeria","Brasilien","Argentinien","Chile","Peru","Mexiko","Kuba","USA","Kanada","Australien","Neuseeland","Mongolei","Namibia","Jordanien","Senegal","Bolivien","Ecuador","Costa Rica"]
-const ALLERGENE=["Erdnüsse","Milch","Eier","Weizen","Soja","Nüsse","Fisch","Krebstiere","Sellerie","Senf","Sesam","Lupinen","Latex","Jod","Penicillin","Ibuprofen","Aspirin","Codein","ASS","Cephalosporine","Tetracycline","Sulfonamide","Metronidazol","Clindamycin","Ciprofloxacin","Amoxicillin","Diclofenac","Morphin","Cortison","Metformin","Heparin","Bienenstiche","Wespen","Katzenhaare","Hundespeichel","Vogelfedern","Hausstaubmilben","Schimmel","Birke","Gräser","Holz","Sand","Kaffee","Schokolade","Gold","Aluminium","Plastik","Beton","Farbe","Leder","Wolle","Papier","Parfüm","Sonnenlicht","Mondlicht","Salzwasser","Delfine","Schnee","Gummi"]
+import { ALLERGENE } from '../data/allergene.js'
+import { LAENDER } from '../data/laender.js'
 const BLUTGRUPPEN=["A","B","AB","0"]
 
 const MONTHS=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"]
 const DAYS=[31,28,31,30,31,30,31,31,30,31,30,31]
-const SKINS=['#FDDCB0','#F0C27F','#D4A574','#C68642','#8D5524']
-const HAIRS=['#1A1A1A','#3D2B1F','#8B6347','#C19A6B','#F0E0A0','#A52A2A','#808080','#2C4A7C']
 
 function genName(used){const LEN=rnd(5,7);for(let _=0;_<300;_++){let nm='';for(let i=0;i<LEN;i++)nm+=String.fromCharCode(65+rnd(0,25));if(!used.has(nm)){used.add(nm);return nm}}return Math.random().toString(36).slice(2,2+LEN).toUpperCase()}
 function genBirthday(){const m=rnd(0,11);return`${rnd(1,DAYS[m])}. ${MONTHS[m]}`}
 
 export function genCardPool(){
   const usedNames=new Set()
-  const combos=[];for(const sk of shuffle([...SKINS]))for(const hr of shuffle([...HAIRS]))for(const gl of[true,false])combos.push({skin:sk,hair:hr,glasses:gl});shuffle(combos)
   return Array.from({length:8},(_,i)=>({
     name:genName(usedNames),geburtstag:genBirthday(),
     medikamente:Math.random()>0.5?'Ja':'Nein',blutgruppe:pick(BLUTGRUPPEN),
     allergien:shuffle([...ALLERGENE]).slice(0,rnd(1,3)).join(', '),
     ausweisnummer:String(rnd(10000,99999)),land:pick(LAENDER),
-    photoUrl:null,...combos[i],
+    photoUrl:null,
   }))
 }
 
@@ -38,34 +33,10 @@ export async function fetchPhotos(count=8){
   }catch{return Array.from({length:count},(_,i)=>`https://i.pravatar.cc/150?img=${i+10}`)}
 }
 
-export function Avatar({card,size=80}){
-  const[err,setErr]=useState(false)
-  if(card.photoUrl&&!err)return<img src={card.photoUrl} width={size} height={size} alt={card.name} style={{borderRadius:'50%',objectFit:'cover',objectPosition:'center top',display:'block'}} onError={()=>setErr(true)}/>
-  const{skin,hair,glasses}=card
-  return<svg width={size} height={size} viewBox="0 0 80 80" style={{display:'block'}}>
-    <ellipse cx="40" cy="26" rx="24" ry="22" fill={hair}/>
-    <rect x="32" y="62" width="16" height="14" rx="4" fill={skin}/>
-    <ellipse cx="40" cy="44" rx="21" ry="26" fill={skin}/>
-    <ellipse cx="40" cy="22" rx="22" ry="16" fill={skin}/>
-    <ellipse cx="16" cy="44" rx="6" ry="14" fill={hair}/>
-    <ellipse cx="64" cy="44" rx="6" ry="14" fill={hair}/>
-    <ellipse cx="40" cy="14" rx="21" ry="14" fill={hair}/>
-    <ellipse cx="29" cy="40" rx="6" ry="4" fill="white"/>
-    <ellipse cx="51" cy="40" rx="6" ry="4" fill="white"/>
-    <circle cx="29" cy="40" r="2.5" fill="#222"/>
-    <circle cx="51" cy="40" r="2.5" fill="#222"/>
-    <path d="M37 50 Q40 53 43 50" fill="none" stroke="#b07050" strokeWidth="1.2"/>
-    <path d="M33 57 Q40 62 47 57" fill="none" stroke="#8B4E4E" strokeWidth="1.8" strokeLinecap="round"/>
-    <path d="M24 35 Q29 33 34 35" fill="none" stroke={hair} strokeWidth="1.8" strokeLinecap="round"/>
-    <path d="M46 35 Q51 33 56 35" fill="none" stroke={hair} strokeWidth="1.8" strokeLinecap="round"/>
-    {glasses&&<><rect x="22" y="36" width="14" height="10" rx="4" fill="none" stroke="#666" strokeWidth="1.5"/><rect x="44" y="36" width="14" height="10" rx="4" fill="none" stroke="#666" strokeWidth="1.5"/><line x1="36" y1="41" x2="44" y2="41" stroke="#666" strokeWidth="1.5"/><line x1="8" y1="41" x2="22" y2="41" stroke="#666" strokeWidth="1.2"/><line x1="58" y1="41" x2="72" y2="41" stroke="#666" strokeWidth="1.2"/></>}
-  </svg>
-}
-
 export function AusweisCard({card}){
   return<div style={{background:T.surf,border:`1px solid ${T.border}`,borderRadius:12,padding:14,width:'100%'}}>
     <div style={{display:'flex',gap:12,marginBottom:10}}>
-      <div style={{background:T.surf2,borderRadius:12,padding:4,flexShrink:0,overflow:'hidden',width:74,height:74,display:'flex',alignItems:'center',justifyContent:'center'}}><Avatar card={card} size={70}/></div>
+      <img src={card.photoUrl} width={70} height={70} alt={card.name} style={{borderRadius:'50%',objectFit:'cover',objectPosition:'center top',flexShrink:0}}/>
       <div style={{flex:1,minWidth:0}}>
         <div style={{color:T.green,fontWeight:'bold',fontSize:17,marginBottom:4}}>{card.name}</div>
         <div style={{color:T.muted,fontSize:10,letterSpacing:1}}>ALLERGIEAUSWEIS</div>
@@ -450,7 +421,7 @@ export default function Allergieausweise({onBack}){
                 <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
                   <span style={{color:T.muted,fontSize:13,minWidth:22,flexShrink:0}}>{qi+1}.</span>
                   <div style={{flex:1,minWidth:0}}>
-                    {q.showAvatar&&<div style={{marginBottom:8}}><Avatar card={q.card} size={40}/></div>}
+                    {q.showAvatar&&<div style={{marginBottom:8}}><img src={q.card.photoUrl} width={40} height={40} alt="" style={{borderRadius:'50%',objectFit:'cover',objectPosition:'center top'}}/></div>}
                     <div style={{fontSize:14,color:T.text,marginBottom:10}}>{q.question}</div>
                     <div style={{fontSize:13}}>
                       <div style={{color:isCorrect?T.green:T.red,marginBottom:2}}>
@@ -492,7 +463,7 @@ export default function Allergieausweise({onBack}){
                 <div style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:q.showAvatar?12:8}}>
                   <span style={{color:T.muted,fontSize:13,minWidth:22,flexShrink:0,lineHeight:'20px'}}>{qi+1}.</span>
                   <div style={{flex:1,minWidth:0}}>
-                    {q.showAvatar&&<div style={{marginBottom:10}}><div style={{background:T.surf2,borderRadius:12,padding:4,overflow:'hidden',width:64,height:64,display:'flex',alignItems:'center',justifyContent:'center'}}><Avatar card={q.card} size={56}/></div></div>}
+                    {q.showAvatar&&<div style={{marginBottom:10}}><img src={q.card.photoUrl} width={56} height={56} alt="" style={{borderRadius:'50%',objectFit:'cover',objectPosition:'center top'}}/></div>}
                     <div style={{fontSize:16,color:T.text}}>{q.question}</div>
                   </div>
                 </div>
