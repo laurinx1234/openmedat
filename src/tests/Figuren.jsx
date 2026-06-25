@@ -382,15 +382,31 @@ export default function Figuren({ onBack }) {
   const lastWinkelDeg = useRef(null)
   const endless = count === 0
 
-  // Figuren mode: all questions upfront
+  // Figuren endless one-at-a-time state
+  const [figCurQ, setFigCurQ] = useState(null)
+  const [figSelected, setFigSelected] = useState(null)
+  const [figShowFb, setFigShowFb] = useState(false)
+  const [figFbReady, setFigFbReady] = useState(false)
+  const [figEndlessSc, setFigEndlessSc] = useState(0)
+  const [figEndlessTot, setFigEndlessTot] = useState(0)
+  // Memoize rotations for single endless question
+  const figRotations = useMemo(() => figCurQ ? genRotations(figCurQ.pieces.normalized || []) : [], [figCurQ])
+
   function startGame() {
     if (quizType === 'figuren') {
-      const n = endless ? 100 : count
-      const qs = Array.from({ length: n }, () => makeTask())
-      setQuestions(qs)
-      setAnswers(Array(n).fill(null))
-      setDone(false)
-      setMode('game')
+      if (endless) {
+        setFigCurQ(makeTask())
+        setFigSelected(null); setFigShowFb(false); setFigFbReady(false)
+        setFigEndlessSc(0); setFigEndlessTot(0); setDone(false)
+        setMode('game')
+      } else {
+        const n = count
+        const qs = Array.from({ length: n }, () => makeTask())
+        setQuestions(qs)
+        setAnswers(Array(n).fill(null))
+        setDone(false)
+        setMode('game')
+      }
     } else {
       setWinkelScore(0); setWinkelTotal(0); setDone(false); lastWinkelDeg.current = null
       const q = makeWinkelTask(null)
@@ -402,19 +418,54 @@ export default function Figuren({ onBack }) {
   }
 
   function finishFiguren() {
+    if (endless && quizType === 'figuren') { setDone(true); return }
     const sc = answers.filter((a, i) => a === questions[i]?.correctIdx).length
     const tot = questions.length
-    if (!endless) saveStat('figuren', sc, tot)
+    saveStat('figuren', sc, tot)
     setDone(true)
   }
 
-  // Escape key for Figuren game mode
+  // Escape key for non-endless Figuren game mode
   useEffect(() => {
     if (mode !== 'game' || done) return
-    const h = e => { if (e.key === 'Escape') { endless ? finishFiguren() : setMode('settings') } }
+    if (endless && quizType === 'figuren') return // handled separately
+    const h = e => { if (e.key === 'Escape') setMode('settings') }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [mode, done, endless])
+  }, [mode, done, endless, quizType])
+
+  // Figuren endless: feedback advance
+  useEffect(() => {
+    if (!figFbReady) return
+    const h = e => { if (e.key === 'Escape') { finishFiguren(); return }; figNextQ() }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [figFbReady])
+
+  // Figuren endless: answer keys
+  useEffect(() => {
+    if (mode !== 'game' || done || figShowFb || !endless || quizType !== 'figuren') return
+    const h = e => {
+      if (e.key === 'Escape') { finishFiguren(); return }
+      const i = KEYS.indexOf(e.key.toLowerCase())
+      if (i >= 0 && i < 5) figEndlessAnswer(i)
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [mode, done, figShowFb, endless, quizType, figCurQ])
+
+  function figEndlessAnswer(i) {
+    if (figSelected !== null) return
+    setFigSelected(i)
+    if (i === figCurQ.correctIdx) setFigEndlessSc(s => s + 1)
+    setFigEndlessTot(t => t + 1)
+    setTimeout(() => { setFigShowFb(true); setTimeout(() => setFigFbReady(true), 200) }, 80)
+  }
+
+  function figNextQ() {
+    setFigFbReady(false); setFigShowFb(false); setFigSelected(null)
+    setFigCurQ(makeTask())
+  }
 
   // Winkel answer/next
   const advanceRef = useRef(null)
@@ -431,7 +482,7 @@ export default function Figuren({ onBack }) {
     setFbReady(false); setShowFb(false); setSelected(null)
     const rem = remaining - 1
     if (!endless && rem <= 0) {
-      if (!endless) saveStat('figuren', winkelScore, winkelTotal)
+      saveStat('figuren', winkelScore, winkelTotal)
       setDone(true); return
     }
     const q = makeWinkelTask(lastWinkelDeg.current)
@@ -448,7 +499,8 @@ export default function Figuren({ onBack }) {
         if (e.key === 'Escape') { endless ? setDone(true) : setMode('settings'); return }
         winkelNextQ()
       }
-      window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h)
+      window.addEventListener('keydown', h)
+      return () => window.removeEventListener('keydown', h)
     }
     if (!showFb && mode === 'winkel') {
       const h = e => {
@@ -461,15 +513,15 @@ export default function Figuren({ onBack }) {
   }, [mode, showFb, fbReady, endless, selected, question, remaining])
 
   function figurenAnswer(qi, i) {
-    if (done) return
+    if (done || endless) return
     const next = [...answers]
     if (next[qi] === i) { next[qi] = null }
     else { next[qi] = i }
     setAnswers(next)
   }
 
-  const figSc = answers.filter((a, i) => a === questions[i]?.correctIdx).length
-  const figTot = answers.filter(a => a !== null).length
+  const figSc = endless ? figEndlessSc : answers.filter((a, i) => a === questions[i]?.correctIdx).length
+  const figTot = endless ? figEndlessTot : answers.filter(a => a !== null).length
 
   const skRows = [
     [{ action: () => setCount(15) }, { action: () => setCount(0) }],
@@ -504,24 +556,95 @@ export default function Figuren({ onBack }) {
     </div>
   )
 
-  if (done) return (
-    <div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 20px' }}>
-      <BackBtn onBack={onBack} />
-      <ResultScreen correct={quizType === 'figuren' || mode === 'game' ? figSc : winkelScore} total={quizType === 'figuren' || mode === 'game' ? figTot : winkelTotal} onRetry={() => setMode('settings')} onBack={onBack} />
-    </div>
-  )
+  if (done) {
+    const finalSc = quizType === 'figuren' || mode === 'game' ? figSc : winkelScore
+    const finalTot = quizType === 'figuren' || mode === 'game' ? figTot : winkelTotal
+    return (
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 20px' }}>
+        <BackBtn onBack={onBack} />
+        <ResultScreen correct={finalSc} total={finalTot} onRetry={() => setMode('settings')} onBack={onBack} />
+      </div>
+    )
+  }
 
-  // ── Figuren mode: vertical scroll ──
+  // ── Figuren endless mode (one-at-a-time) ──
+  if (mode === 'game' && endless && quizType === 'figuren' && figCurQ) {
+    const q = figCurQ
+    return (
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <button onClick={finishFiguren} style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 8, color: T.muted, cursor: 'pointer', padding: '6px 14px', fontSize: 13 }}>← Beenden</button>
+            <div style={{ color: T.teal, fontSize: 18, fontWeight: 'bold' }}>Figuren zusammensetzen</div>
+          </div>
+          <ScoreBar score={figEndlessSc} total={figEndlessTot} color={T.teal} />
+        </div>
+        <Card>
+          <div style={{ color: T.muted, fontSize: 13, marginBottom: 16 }}>Welche Figur ergibt sich aus diesen Teilen?</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+            {(q.pieces.normalized || []).map((p, i) => (
+              <PieceTile key={i} data={p} rotation={figRotations[i] || 0} color={PC[i % 9]} />
+            ))}
+          </div>
+          {q.opts.map((o, i) => {
+            const isCorrect = figSelected !== null && i === q.correctIdx
+            const isWrong = figSelected !== null && i === figSelected && i !== q.correctIdx
+            const bg = isCorrect ? `${T.green}22` : isWrong ? `${T.red}22` : T.surf2
+            const border = isCorrect ? T.green : isWrong ? T.red : T.border
+            return (
+              <button key={i} onClick={() => figEndlessAnswer(i)} style={{
+                display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                background: bg, border: `1px solid ${border}`, borderRadius: 10,
+                color: T.text, cursor: figSelected !== null ? 'default' : 'pointer',
+                padding: '10px 16px', fontSize: 14, marginBottom: 8, transition: 'all 0.15s'
+              }}>
+                <span style={{ color: T.yellow, fontWeight: 'bold', minWidth: 22 }}>{OPTS[i]}</span>
+                {o.shape ? (<><AnswerSVG shape={o.shape} size={56} /><span>{o.shape.label}</span></>) : <span style={{ color: T.muted }}>Keine der Figuren ist richtig.</span>}
+                {isCorrect && <span style={{ color: T.green, marginLeft: 'auto' }}>✓</span>}
+                {isWrong && <span style={{ color: T.red, marginLeft: 'auto' }}>✗</span>}
+              </button>
+            )
+          })}
+          {!figShowFb && <KeyHint />}
+          {figShowFb && (
+            <div style={{ marginTop: 16, background: T.surf2, borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ fontSize: 14, marginBottom: 4 }}>
+                {figSelected === q.correctIdx
+                  ? <span style={{ color: T.green }}>✓ Richtig!</span>
+                  : <span>Richtige Antwort: <span style={{ color: T.green, fontWeight: 'bold' }}>{q.opts[q.correctIdx].shape ? q.opts[q.correctIdx].shape.label : 'Keine der Figuren ist richtig.'}</span></span>
+                }
+              </div>
+              {q.targetShape && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+                  <svg viewBox="0 0 100 100" width="120" height="120">
+                    {(q.pieces.raw || []).map((p, i) => (
+                      <path key={i} d={ptsToPath(p)} fill={`${PC[i % 9]}55`} stroke={PC[i % 9]} strokeWidth="1.5" strokeLinejoin="round" />
+                    ))}
+                  </svg>
+                  <span style={{ color: T.teal, fontWeight: 'bold', fontSize: 16 }}>{q.targetShape.label}</span>
+                </div>
+              )}
+              <button onClick={figNextQ} style={{ background: T.teal, border: 'none', borderRadius: 8, color: '#000', cursor: 'pointer', padding: '8px 20px', fontSize: 14, fontWeight: 'bold' }}>
+                Weiter <span style={{ opacity: 0.6, fontSize: 12 }}>(beliebige Taste / Klick)</span>
+              </button>
+            </div>
+          )}
+        </Card>
+      </div>
+    )
+  }
+
+  // ── Figuren mode: vertical scroll (non-endless) ──
   if (mode === 'game') return (
     <div style={{ maxWidth: 840, margin: '0 auto', padding: '24px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <button onClick={() => endless ? finishFiguren() : setMode('settings')} style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 8, color: T.muted, cursor: 'pointer', padding: '6px 14px', fontSize: 13 }}>← Zurück</button>
+          <button onClick={() => setMode('settings')} style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 8, color: T.muted, cursor: 'pointer', padding: '6px 14px', fontSize: 13 }}>← Zurück</button>
           <div style={{ color: T.teal, fontSize: 18, fontWeight: 'bold' }}>Figuren zusammensetzen</div>
         </div>
         <ScoreBar score={figSc} total={figTot} color={T.teal} />
       </div>
-      {!endless && <ProgressBar current={figTot + 1} total={count} color={T.teal} />}
+      <ProgressBar current={figTot + 1} total={count} color={T.teal} />
       <FigurenQuiz questions={questions} answers={answers} onAnswer={figurenAnswer} color={T.teal} />
       <div style={{ marginTop: 12 }}>
         <KeyHint />
@@ -532,7 +655,7 @@ export default function Figuren({ onBack }) {
     </div>
   )
 
-  // ── Winkel mode (one-at-a-time, unchanged) ──
+  // ── Winkel mode (one-at-a-time) ──
   const q = question; if (!q) return null
   const getState = i => selected === null ? 'idle' : i === q.correctIdx ? 'correct' : i === selected ? 'wrong' : 'idle'
   const btnStyle = i => ({
@@ -601,7 +724,7 @@ export default function Figuren({ onBack }) {
               </div>
             </div>
             <button onClick={winkelNextQ} style={{ background: T.teal, border: 'none', borderRadius: 8, color: '#000', cursor: 'pointer', padding: '8px 20px', fontSize: 14, fontWeight: 'bold' }}>
-              Weiter <span style={{ opacity: 0.6, fontSize: 12 }}>(beliebige Taste)</span>
+              Weiter <span style={{ opacity: 0.6, fontSize: 12 }}>(beliebige Taste / Klick)</span>
             </button>
           </div>
         )}

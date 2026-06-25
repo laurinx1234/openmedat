@@ -93,42 +93,92 @@ export default function Implikationen({ onBack }) {
   const [gameTimer, resetGame] = useTimer(0)
   const endless = count === 0
 
+  // Endless one-at-a-time state
+  const [curQ, setCurQ] = useState(null)
+  const [selected, setSelected] = useState(null)
+  const [showFb, setShowFb] = useState(false)
+  const [fbReady, setFbReady] = useState(false)
+  const [endlessSc, setEndlessSc] = useState(0)
+  const [endlessTot, setEndlessTot] = useState(0)
+
   function startGame() {
-    const n = endless ? 100 : count
-    const qs = Array.from({ length: n }, () => makeTask())
-    setQuestions(qs)
-    setAnswers(Array(n).fill(null))
-    setDone(false)
-    resetGame(endless ? 99999 : count * 60)
+    if (endless) {
+      setCurQ(makeTask())
+      setSelected(null); setShowFb(false); setFbReady(false)
+      setEndlessSc(0); setEndlessTot(0); setDone(false)
+    } else {
+      const n = count
+      const qs = Array.from({ length: n }, () => makeTask())
+      setQuestions(qs)
+      setAnswers(Array(n).fill(null))
+      setDone(false)
+      resetGame(count * 60)
+    }
     setMode('game')
   }
 
   function finishGame() {
+    if (endless) { setDone(true); return }
     const sc = answers.filter((a, i) => a === questions[i]?.correctIdx).length
     const tot = questions.length
-    if (!endless) saveStat('implikationen', sc, tot)
+    saveStat('implikationen', sc, tot)
     setDone(true)
   }
 
+  // Timer expiry → finish (non-endless only)
   useEffect(() => { if (mode === 'game' && !endless && gameTimer <= 0 && !done) finishGame() }, [gameTimer, mode, endless, done])
 
+  // Feedback advance in endless mode
   useEffect(() => {
-    if (mode !== 'game' || done) return
-    const h = e => { if (e.key === 'Escape') { endless ? finishGame() : setMode('settings') } }
+    if (!fbReady) return
+    const h = e => { if (e.key === 'Escape') { finishGame(); return }; nextQ() }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [fbReady])
+
+  // Answer keys in endless mode
+  useEffect(() => {
+    if (mode !== 'game' || done || showFb || !endless) return
+    const h = e => {
+      if (e.key === 'Escape') { finishGame(); return }
+      const i = KEYS.indexOf(e.key.toLowerCase())
+      if (i >= 0 && i < 5) endlessAnswer(i)
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [mode, done, showFb, endless, curQ])
+
+  // Escape in non-endless game mode
+  useEffect(() => {
+    if (mode !== 'game' || done || endless) return
+    const h = e => { if (e.key === 'Escape') setMode('settings') }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
   }, [mode, done, endless])
 
+  function endlessAnswer(i) {
+    if (selected !== null) return
+    setSelected(i)
+    if (i === curQ.correctIdx) setEndlessSc(s => s + 1)
+    setEndlessTot(t => t + 1)
+    setTimeout(() => { setShowFb(true); setTimeout(() => setFbReady(true), 200) }, 80)
+  }
+
+  function nextQ() {
+    setFbReady(false); setShowFb(false); setSelected(null)
+    setCurQ(makeTask())
+  }
+
   function answer(qi, i) {
-    if (done) return
+    if (done || endless) return
     const next = [...answers]
     if (next[qi] === i) { next[qi] = null }
     else { next[qi] = i }
     setAnswers(next)
   }
 
-  const sc = answers.filter((a, i) => a === questions[i]?.correctIdx).length
-  const tot = answers.filter(a => a !== null).length
+  const sc = endless ? endlessSc : answers.filter((a, i) => a === questions[i]?.correctIdx).length
+  const tot = endless ? endlessTot : answers.filter(a => a !== null).length
 
   const skRows = [
     [{ action: () => setCount(10) }, { action: () => setCount(0) }],
@@ -152,21 +202,72 @@ export default function Implikationen({ onBack }) {
       </Card>
     </div>
   )
-  if (done) return (<div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 20px' }}><BackBtn onBack={onBack} /><ResultScreen correct={sc} total={tot} onRetry={() => setMode('settings')} onBack={onBack} /></div>)
+  if (done) {
+    const finalSc = endless ? endlessSc : sc
+    const finalTot = endless ? endlessTot : tot
+    return (<div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 20px' }}><BackBtn onBack={onBack} /><ResultScreen correct={finalSc} total={finalTot} onRetry={() => setMode('settings')} onBack={onBack} /></div>)
+  }
 
+  // ── Endless game mode (one-at-a-time) ──
+  if (endless && mode === 'game' && curQ) {
+    const q = curQ
+    const getState = i => selected === null ? 'idle' : i === q.correctIdx ? 'correct' : i === selected ? 'wrong' : 'idle'
+    return (
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <button onClick={finishGame} style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 8, color: T.muted, cursor: 'pointer', padding: '6px 14px', fontSize: 13 }}>← Beenden</button>
+            <div style={{ color: T.yellow, fontSize: 18, fontWeight: 'bold' }}>Implikationen erkennen</div>
+          </div>
+          <ScoreBar score={endlessSc} total={endlessTot} color={T.yellow} />
+        </div>
+        <Card>
+          <div style={{ color: T.muted, fontSize: 13, marginBottom: 12 }}>Welche Schlussfolgerung ist logisch korrekt?</div>
+          {[q.p1, q.p2].map((p, pi) => (
+            <div key={pi} style={{ display: 'flex', gap: 12, background: T.surf2, borderRadius: 10, padding: '14px 18px', borderLeft: `3px solid ${T.yellow}`, marginBottom: 10 }}>
+              <span style={{ color: T.yellow, fontWeight: 'bold', minWidth: 20 }}>{pi + 1}.</span>
+              <span style={{ color: T.text, fontSize: 16 }}>{p}</span>
+            </div>
+          ))}
+          <div style={{ marginTop: 16 }}>
+            {q.options.map((o, i) => (
+              <OptionBtn key={i} label={OPTS[i]} state={getState(i)} onClick={() => endlessAnswer(i)} text={o} />
+            ))}
+          </div>
+          {!showFb && <KeyHint />}
+          {showFb && (
+            <div style={{ marginTop: 16, background: T.surf2, borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ color: T.muted, fontSize: 13, marginBottom: 6 }}>{q.modusName}</div>
+              <div style={{ fontSize: 14, marginBottom: 14 }}>
+                {selected === q.correctIdx
+                  ? <span style={{ color: T.green }}>✓ Richtig!</span>
+                  : <span>Richtige Antwort: <span style={{ color: T.green, fontWeight: 'bold' }}>{q.options[q.correctIdx]}</span></span>
+                }
+              </div>
+              <button onClick={nextQ} style={{ background: T.yellow, border: 'none', borderRadius: 8, color: '#000', cursor: 'pointer', padding: '8px 20px', fontSize: 14, fontWeight: 'bold' }}>
+                Weiter <span style={{ opacity: 0.6, fontSize: 12 }}>(beliebige Taste / Klick)</span>
+              </button>
+            </div>
+          )}
+        </Card>
+      </div>
+    )
+  }
+
+  // ── Non-endless game mode (all-at-once) ──
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <button onClick={() => endless ? finishGame() : setMode('settings')} style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 8, color: T.muted, cursor: 'pointer', padding: '6px 14px', fontSize: 13 }}>← Zurück</button>
+          <button onClick={() => setMode('settings')} style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 8, color: T.muted, cursor: 'pointer', padding: '6px 14px', fontSize: 13 }}>← Zurück</button>
           <div style={{ color: T.yellow, fontSize: 18, fontWeight: 'bold' }}>Implikationen erkennen</div>
         </div>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <ScoreBar score={sc} total={tot} color={T.yellow} />
-          {!endless ? <TimerBadge seconds={gameTimer} /> : <span style={{ color: T.muted, fontSize: 13 }}>∞</span>}
+          <TimerBadge seconds={gameTimer} />
         </div>
       </div>
-      {!endless && <ProgressBar current={tot + 1} total={count} color={T.yellow} />}
+      <ProgressBar current={tot + 1} total={count} color={T.yellow} />
       <ImplQuiz questions={questions} answers={answers} onAnswer={answer} color={T.yellow} />
       <div style={{ marginTop: 12 }}>
         <KeyHint />

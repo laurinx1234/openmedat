@@ -83,44 +83,91 @@ export default function Zahlenfolgen({ onBack }) {
   const [gameTimer, resetGame] = useTimer(0)
   const endless = count === 0
 
+  // Endless one-at-a-time state
+  const [curQ, setCurQ] = useState(null)
+  const [selected, setSelected] = useState(null)
+  const [showFb, setShowFb] = useState(false)
+  const [fbReady, setFbReady] = useState(false)
+  const [endlessSc, setEndlessSc] = useState(0)
+  const [endlessTot, setEndlessTot] = useState(0)
+
   function startGame() {
-    const n = endless ? 100 : count
-    const qs = Array.from({ length: n }, () => makeTask())
-    setQuestions(qs)
-    setAnswers(Array(n).fill(null))
-    setDone(false)
-    resetGame(endless ? 99999 : count * 90)
+    if (endless) {
+      setCurQ(makeTask())
+      setSelected(null); setShowFb(false); setFbReady(false)
+      setEndlessSc(0); setEndlessTot(0); setDone(false)
+    } else {
+      const qs = Array.from({ length: count }, () => makeTask())
+      setQuestions(qs)
+      setAnswers(Array(count).fill(null))
+      setDone(false)
+      resetGame(count * 90)
+    }
     setMode('game')
   }
 
   function finishGame() {
+    if (endless) { setDone(true); return }
     const sc = answers.filter((a, i) => a === questions[i]?.correctIdx).length
     const tot = questions.length
-    if (!endless) saveStat('zahlenfolgen', sc, tot)
+    saveStat('zahlenfolgen', sc, tot)
     setDone(true)
   }
 
-  // Timer expiry → finish
+  // Timer expiry → finish (non-endless only)
   useEffect(() => { if (mode === 'game' && !endless && gameTimer <= 0 && !done) finishGame() }, [gameTimer, mode, endless, done])
 
-  // Escape key in game mode
+  // Feedback advance in endless mode
   useEffect(() => {
-    if (mode !== 'game' || done) return
-    const h = e => { if (e.key === 'Escape') { endless ? finishGame() : setMode('settings') } }
+    if (!fbReady) return
+    const h = e => { if (e.key === 'Escape') { finishGame(); return }; nextQ() }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [fbReady])
+
+  // Answer keys in endless mode
+  useEffect(() => {
+    if (mode !== 'game' || done || showFb || !endless) return
+    const h = e => {
+      if (e.key === 'Escape') { finishGame(); return }
+      const i = KEYS.indexOf(e.key.toLowerCase())
+      if (i >= 0 && i < 5) endlessAnswer(i)
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [mode, done, showFb, endless, curQ])
+
+  // Escape in non-endless game mode
+  useEffect(() => {
+    if (mode !== 'game' || done || endless) return
+    const h = e => { if (e.key === 'Escape') setMode('settings') }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
   }, [mode, done, endless])
 
+  function endlessAnswer(i) {
+    if (selected !== null) return
+    setSelected(i)
+    if (i === curQ.correctIdx) setEndlessSc(s => s + 1)
+    setEndlessTot(t => t + 1)
+    setTimeout(() => { setShowFb(true); setTimeout(() => setFbReady(true), 200) }, 80)
+  }
+
+  function nextQ() {
+    setFbReady(false); setShowFb(false); setSelected(null)
+    setCurQ(makeTask())
+  }
+
   function answer(qi, i) {
-    if (done) return
+    if (done || endless) return
     const next = [...answers]
     if (next[qi] === i) { next[qi] = null }
     else { next[qi] = i }
     setAnswers(next)
   }
 
-  const sc = answers.filter((a, i) => a === questions[i]?.correctIdx).length
-  const tot = answers.filter(a => a !== null).length
+  const sc = endless ? endlessSc : answers.filter((a, i) => a === questions[i]?.correctIdx).length
+  const tot = endless ? endlessTot : answers.filter(a => a !== null).length
 
   const skRows = [
     [{ action: () => setCount(10) }, { action: () => setCount(0) }],
@@ -144,21 +191,70 @@ export default function Zahlenfolgen({ onBack }) {
       </Card>
     </div>
   )
-  if (done) return (<div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 20px' }}><BackBtn onBack={onBack} /><ResultScreen correct={sc} total={tot} onRetry={() => setMode('settings')} onBack={onBack} /></div>)
+  if (done) {
+    const finalSc = endless ? endlessSc : sc
+    const finalTot = endless ? endlessTot : tot
+    return (<div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 20px' }}><BackBtn onBack={onBack} /><ResultScreen correct={finalSc} total={finalTot} onRetry={() => setMode('settings')} onBack={onBack} /></div>)
+  }
 
+  // ── Endless game mode (one-at-a-time) ──
+  if (endless && mode === 'game' && curQ) {
+    const q = curQ
+    const getState = i => selected === null ? 'idle' : i === q.correctIdx ? 'correct' : i === selected ? 'wrong' : 'idle'
+    return (
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <button onClick={finishGame} style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 8, color: T.muted, cursor: 'pointer', padding: '6px 14px', fontSize: 13 }}>← Beenden</button>
+            <div style={{ color: T.blue, fontSize: 18, fontWeight: 'bold' }}>Zahlenfolgen</div>
+          </div>
+          <ScoreBar score={endlessSc} total={endlessTot} color={T.blue} />
+        </div>
+        <Card>
+          <div style={{ color: T.muted, fontSize: 13, marginBottom: 12 }}>Welche zwei Zahlen kommen als 8. und 9. Stelle?</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+            {q.visible.map((v, vi) => (
+              <div key={vi} style={{ minWidth: 56, padding: '12px 8px', background: T.surf2, border: `1px solid ${T.border}`, borderRadius: 8, textAlign: 'center', fontSize: 20, fontWeight: 'bold', color: T.text }}>{v}</div>
+            ))}
+            {[0, 1].map(i => (<div key={`q${i}`} style={{ minWidth: 56, padding: '12px 8px', background: `${T.yellow}18`, border: `1px solid ${T.yellow}`, borderRadius: 8, textAlign: 'center', fontSize: 20, fontWeight: 'bold', color: T.yellow }}>?</div>))}
+          </div>
+          {q.choices.map((c, i) => (
+            <OptionBtn key={i} label={OPTS[i]} state={getState(i)} onClick={() => endlessAnswer(i)} text={c === 'keine' ? 'Keine Option ist richtig.' : `${Array.isArray(c) ? c[0] : c}  ,  ${Array.isArray(c) ? c[1] : ''}`} />
+          ))}
+          {!showFb && <KeyHint />}
+          {showFb && (
+            <div style={{ marginTop: 16, background: T.surf2, borderRadius: 12, padding: '16px 20px' }}>
+              <div style={{ fontSize: 14, marginBottom: 4 }}>
+                {selected === q.correctIdx
+                  ? <span style={{ color: T.green }}>✓ Richtig!</span>
+                  : <span>Richtige Antwort: <span style={{ color: T.green, fontWeight: 'bold' }}>{q.choices[q.correctIdx] === 'keine' ? 'Keine Option ist richtig.' : `${Array.isArray(q.choices[q.correctIdx]) ? q.choices[q.correctIdx][0] : q.choices[q.correctIdx]}  ,  ${Array.isArray(q.choices[q.correctIdx]) ? q.choices[q.correctIdx][1] : ''}`}</span></span>
+                }
+              </div>
+              {q.label && <div style={{ color: T.muted, fontSize: 13, marginBottom: 14, fontStyle: 'italic' }}>{q.label}</div>}
+              <button onClick={nextQ} style={{ background: T.blue, border: 'none', borderRadius: 8, color: '#000', cursor: 'pointer', padding: '8px 20px', fontSize: 14, fontWeight: 'bold' }}>
+                Weiter <span style={{ opacity: 0.6, fontSize: 12 }}>(beliebige Taste / Klick)</span>
+              </button>
+            </div>
+          )}
+        </Card>
+      </div>
+    )
+  }
+
+  // ── Non-endless game mode (all-at-once) ──
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', padding: '24px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <button onClick={() => endless ? finishGame() : setMode('settings')} style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 8, color: T.muted, cursor: 'pointer', padding: '6px 14px', fontSize: 13 }}>← Zurück</button>
+          <button onClick={() => setMode('settings')} style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: 8, color: T.muted, cursor: 'pointer', padding: '6px 14px', fontSize: 13 }}>← Zurück</button>
           <div style={{ color: T.blue, fontSize: 18, fontWeight: 'bold' }}>Zahlenfolgen</div>
         </div>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <ScoreBar score={sc} total={tot} color={T.blue} />
-          {!endless ? <TimerBadge seconds={gameTimer} /> : <span style={{ color: T.muted, fontSize: 13 }}>∞</span>}
+          <TimerBadge seconds={gameTimer} />
         </div>
       </div>
-      {!endless && <ProgressBar current={tot + 1} total={count} color={T.blue} />}
+      <ProgressBar current={tot + 1} total={count} color={T.blue} />
       <ZahlenQuiz questions={questions} answers={answers} onAnswer={answer} color={T.blue} />
       <div style={{ marginTop: 12 }}>
         <KeyHint />
