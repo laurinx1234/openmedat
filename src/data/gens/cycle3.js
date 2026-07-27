@@ -1,8 +1,9 @@
-import { safe, ch } from './helpers.js'
+import { pick } from '../../utils/random.js'
+import { safe } from './helpers.js'
 
 export default function cycle3() {
   for (let _ = 0; _ < 100; _++) {
-    const a = ch([16, 24, 32, 48, 64, 80]), add = ch([8, 12, 16, 20])
+    const a = pick([16, 24, 32, 48, 64, 80]), add = pick([8, 12, 16, 20])
     const s = [a]
     let ok = true
     for (let i = 0; i < 8; i++) {

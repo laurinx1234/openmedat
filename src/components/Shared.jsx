@@ -3,12 +3,30 @@ import { T } from '../theme.js'
 
 export function useTimer(seconds, paused = false) {
   const [t, setT] = useState(seconds)
+  const endRef = useRef(Date.now() + seconds * 1000)
+  const leftRef = useRef(null)
+
   useEffect(() => {
-    if (t <= 0 || paused) return
-    const id = setTimeout(() => setT(x => x - 1), 1000)
-    return () => clearTimeout(id)
-  }, [t, paused])
-  const reset = (s) => setT(s)
+    if (paused) {
+      if (endRef.current != null) leftRef.current = endRef.current - Date.now()
+      return
+    }
+    if (leftRef.current != null) {
+      endRef.current = Date.now() + leftRef.current
+      leftRef.current = null
+    }
+    const tick = () => setT(Math.max(0, Math.ceil((endRef.current - Date.now()) / 1000)))
+    tick()
+    const id = setInterval(tick, 250)
+    return () => clearInterval(id)
+  }, [paused])
+
+  const reset = (s) => {
+    leftRef.current = null
+    endRef.current = Date.now() + s * 1000
+    setT(s)
+  }
+
   return [t, reset]
 }
 
@@ -247,8 +265,6 @@ export function playBeep() {
   } catch (e) { /* Audio not available */ }
 }
 
-export const rnd = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
-export const pick = arr => arr[Math.floor(Math.random() * arr.length)]
-export const shuffle = arr => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = rnd(0, i); [a[i], a[j]] = [a[j], a[i]] }; return a }
+export { rnd, pick, shuffle } from '../utils/random.js'
 export const OPTS = ['A','B','C','D','E']
 export const KEYS = ['a','s','d','f','g']

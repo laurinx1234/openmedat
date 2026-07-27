@@ -4,6 +4,11 @@ import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHin
 import { makeTask } from '../data/gens/index.js'
 export { makeTask }
 
+export function fmtChoice(c) {
+  if (c === 'keine') return 'Keine Option ist richtig.'
+  return Array.isArray(c) ? `${c[0]}  ,  ${c[1]}` : `${c}  ,  `
+}
+
 export function ZahlenQuiz({ questions, answers, onAnswer, color }) {
   const [focusedQ, setFocusedQ] = useState(0)
   const questionRefs = useRef({})
@@ -63,7 +68,7 @@ export function ZahlenQuiz({ questions, answers, onAnswer, color }) {
                   </div>
                 </div>
                 {q.choices.map((c, i) => (
-                  <OptionBtn key={i} label={OPTS[i]} state={answers[qi] === i ? 'selected' : 'idle'} onClick={() => onAnswer(qi, i)} text={c === 'keine' ? 'Keine Option ist richtig.' : `${Array.isArray(c) ? c[0] : c}  ,  ${Array.isArray(c) ? c[1] : ''}`} />
+                  <OptionBtn key={i} label={OPTS[i]} state={answers[qi] === i ? 'selected' : 'idle'} onClick={() => onAnswer(qi, i)} text={fmtChoice(c)} />
                 ))}
               </Card>
             </div>
@@ -219,7 +224,7 @@ export default function Zahlenfolgen({ onBack }) {
             {[0, 1].map(i => (<div key={`q${i}`} style={{ minWidth: 56, padding: '12px 8px', background: `${T.yellow}18`, border: `1px solid ${T.yellow}`, borderRadius: 8, textAlign: 'center', fontSize: 20, fontWeight: 'bold', color: T.yellow }}>?</div>))}
           </div>
           {q.choices.map((c, i) => (
-            <OptionBtn key={i} label={OPTS[i]} state={getState(i)} onClick={() => endlessAnswer(i)} text={c === 'keine' ? 'Keine Option ist richtig.' : `${Array.isArray(c) ? c[0] : c}  ,  ${Array.isArray(c) ? c[1] : ''}`} />
+            <OptionBtn key={i} label={OPTS[i]} state={getState(i)} onClick={() => endlessAnswer(i)} text={fmtChoice(c)} />
           ))}
           {!showFb && <KeyHint />}
           {showFb && (
@@ -227,7 +232,7 @@ export default function Zahlenfolgen({ onBack }) {
               <div style={{ fontSize: 14, marginBottom: 4 }}>
                 {selected === q.correctIdx
                   ? <span style={{ color: T.green }}>✓ Richtig!</span>
-                  : <span>Richtige Antwort: <span style={{ color: T.green, fontWeight: 'bold' }}>{q.choices[q.correctIdx] === 'keine' ? 'Keine Option ist richtig.' : `${Array.isArray(q.choices[q.correctIdx]) ? q.choices[q.correctIdx][0] : q.choices[q.correctIdx]}  ,  ${Array.isArray(q.choices[q.correctIdx]) ? q.choices[q.correctIdx][1] : ''}`}</span></span>
+                  : <span>Richtige Antwort: <span style={{ color: T.green, fontWeight: 'bold' }}>{fmtChoice(q.choices[q.correctIdx])}</span></span>
                 }
               </div>
               {q.label && <div style={{ color: T.muted, fontSize: 13, marginBottom: 14, fontStyle: 'italic' }}>{q.label}</div>}

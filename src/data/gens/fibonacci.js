@@ -1,4 +1,4 @@
-import { rnd } from '../../components/Shared.jsx'
+import { rnd } from '../../utils/random.js'
 
 export default function fibonacci() {
   const a = rnd(1, 15), b = rnd(1, 15), s = [a, b]

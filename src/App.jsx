@@ -14,30 +14,23 @@ import Simulationsrechner from './tests/Simulationsrechner.jsx'
 import Feedback from './components/Feedback.jsx'
 
 const TESTS = [
-  { path:'/zahlenfolgen',    title:'Zahlenfolgen',           icon:'🔢', desc:'7 Zahlen → 8. und 9. Stelle berechnen',    color:T.blue   },
-  { path:'/wortfluessigkeit',title:'Wortflüssigkeit',        icon:'🔤', desc:'Wörter erkennen – Anfangsbuchstabe finden', color:T.mauve  },
-  { path:'/implikationen',   title:'Implikationen erkennen', icon:'🧠', desc:'Zwei Aussagen → logische Schlussfolgerung', color:T.yellow },
-  { path:'/allergieausweise',title:'Allergieausweise',       icon:'💳', desc:'Ausweise merken und Fragen beantworten',   color:T.green  },
-  { path:'/figuren',         title:'Figuren zusammensetzen', icon:'🔷', desc:'Einzelteile zu einer Figur zusammensetzen', color:T.teal  },
-  { path:'/major-system',   title:'Major-System',            icon:'🔗', desc:'Zahlen mit Bildwörtern verknüpfen', color:T.pink  },
-  { path:'/simulation',      title:'Simulation',             icon:'🎓', desc:'Kompletter Testtag – alle 5 Kategorien',   color:T.orange },
-  { path:'/simulationsrechner',title:'Simulationsrechner',      icon:'📝', desc:'Simulationstimer und -Auswertung für externe Simulationen', color:T.orange },
+  { path:'/zahlenfolgen',    title:'Zahlenfolgen',           icon:'🔢', desc:'7 Zahlen → 8. und 9. Stelle berechnen',    color:T.blue,   component:Zahlenfolgen },
+  { path:'/wortfluessigkeit',title:'Wortflüssigkeit',        icon:'🔤', desc:'Wörter erkennen – Anfangsbuchstabe finden', color:T.mauve,  component:Wortfluessigkeit },
+  { path:'/implikationen',   title:'Implikationen erkennen', icon:'🧠', desc:'Zwei Aussagen → logische Schlussfolgerung', color:T.yellow, component:Implikationen },
+  { path:'/allergieausweise',title:'Allergieausweise',       icon:'💳', desc:'Ausweise merken und Fragen beantworten',   color:T.green,  component:Allergieausweise },
+  { path:'/figuren',         title:'Figuren zusammensetzen', icon:'🔷', desc:'Einzelteile zu einer Figur zusammensetzen', color:T.teal,   component:Figuren },
+  { path:'/major-system',   title:'Major-System',            icon:'🔗', desc:'Zahlen mit Bildwörtern verknüpfen', color:T.pink,   component:MajorSystem },
+  { path:'/simulation',      title:'Simulation',             icon:'🎓', desc:'Kompletter Testtag – alle 5 Kategorien',   color:T.orange, component:Simulation, noStats:true },
+  { path:'/simulationsrechner',title:'Simulationsrechner',      icon:'📝', desc:'Simulationstimer und -Auswertung für externe Simulationen', color:T.orange, component:Simulationsrechner, noStats:true },
 ]
 
 const goHome = () => navigate('/')
 
 function renderScreen(route) {
-  switch(route) {
-    case '/zahlenfolgen':    return <Zahlenfolgen    onBack={goHome}/>
-    case '/wortfluessigkeit':return <Wortfluessigkeit onBack={goHome}/>
-    case '/implikationen':   return <Implikationen   onBack={goHome}/>
-    case '/allergieausweise':return <Allergieausweise onBack={goHome}/>
-    case '/figuren':         return <Figuren         onBack={goHome}/>
-    case '/major-system':   return <MajorSystem     onBack={goHome}/>
-    case '/simulation':      return <Simulation      onBack={goHome}/>
-    case '/simulationsrechner':return <Simulationsrechner onBack={goHome}/>
-    default: return null
-  }
+  const t = TESTS.find(t => t.path === route)
+  if (!t) return null
+  const C = t.component
+  return <C onBack={goHome}/>
 }
 
 
@@ -56,10 +49,11 @@ function QuizBadge() {
   }
   const mins = minutesUntilQuiz()
   return (
-    <div onClick={() => navigate('/allergieausweise')}
+    <button onClick={() => navigate('/allergieausweise')}
       style={{ background: ready ? `${T.green}22` : `${T.surf}`, border: `1px solid ${ready ? T.green : T.border}`,
         borderRadius: 12, padding: '14px 20px', marginBottom: 20, cursor: 'pointer',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        width: '100%', textAlign: 'left', font: 'inherit', color: 'inherit' }}>
       <div>
         <div style={{ color: ready ? T.green : T.text, fontWeight: 'bold', marginBottom: 2 }}>
           {ready ? '🔔 Allergieausweise Quiz bereit!' : '⏳ Allergieausweise Merkphase läuft'}
@@ -69,7 +63,7 @@ function QuizBadge() {
         </div>
       </div>
       <span style={{ color: ready ? T.green : T.muted, fontSize: 20 }}>→</span>
-    </div>
+    </button>
   )
 }
 
@@ -135,14 +129,12 @@ export default function App() {
     )
   }
 
-  const TEST_IDS = ['zahlenfolgen','wortfluessigkeit','implikationen','allergieausweise','figuren','major-system']
-  const TEST_NAMES = { zahlenfolgen:'Zahlenfolgen', wortfluessigkeit:'Wortflüssigkeit', implikationen:'Implikationen', allergieausweise:'Allergieausweise', figuren:'Figuren', 'major-system':'Major-System' }
-  const TEST_COLORS = { zahlenfolgen:T.blue, wortfluessigkeit:T.mauve, implikationen:T.yellow, allergieausweise:T.green, figuren:T.teal, 'major-system':T.pink }
+  const statTests = TESTS.filter(t => !t.noStats).map(t => ({ id: t.path.slice(1), title: t.title, color: t.color }))
 
   if (showStats) {
     const allStats = getStats()
     const byTest = {}
-    for (const t of TEST_IDS) byTest[t] = allStats.filter(s => s.test === t).slice(-10)
+    for (const t of statTests) byTest[t.id] = allStats.filter(s => s.test === t.id).slice(-10)
     const hasAny = Object.values(byTest).some(a => a.length)
 
     return (
@@ -161,14 +153,14 @@ export default function App() {
               Noch keine Statistiken vorhanden. Spiele einen Test im Nicht-Endlosmodus, um Ergebnisse zu speichern.
             </div>
           )}
-          {TEST_IDS.filter(t => byTest[t].length).map(t => {
-            const entries = byTest[t]
+          {statTests.filter(t => byTest[t.id].length).map(t => {
+            const entries = byTest[t.id]
             const avgPct = Math.round(entries.reduce((s,e) => s + e.correct/e.total*100, 0) / entries.length)
-            const col = TEST_COLORS[t]
+            const col = t.color
             return (
-              <div key={t} style={{ marginBottom:32 }}>
+              <div key={t.id} style={{ marginBottom:32 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:12 }}>
-                  <div style={{ color:col, fontSize:17, fontWeight:'bold' }}>{TEST_NAMES[t]}</div>
+                  <div style={{ color:col, fontSize:17, fontWeight:'bold' }}>{t.title}</div>
                   <div style={{ color:T.muted, fontSize:13 }}>Ø <span style={{ color:col, fontWeight:'bold' }}>{avgPct}%</span> ({entries.length} Tests)</div>
                 </div>
                 <div style={{ background:T.surf, border:`1px solid ${T.border}`, borderRadius:12, overflow:'hidden' }}>

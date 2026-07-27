@@ -1,5 +1,4 @@
-import { rnd, shuffle } from '../../components/Shared.jsx'
-import { ch } from './helpers.js'
+import { rnd, shuffle, pick } from '../../utils/random.js'
 import alternating from './alternating.js'
 import rates from './rates.js'
 import inception from './inception.js'
@@ -18,9 +17,9 @@ const GENS = [alternating, rates, inception, cycle3, fibonacci, tribonacci, fibd
 
 function plausOff(v) {
   const m = Math.max(1, Math.abs(v))
-  if (m < 20) return ch([-6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6])
-  if (m < 100) return ch([-15, -12, -10, -8, -6, -5, 5, 6, 8, 10, 12, 15])
-  return ch([-40, -30, -20, -15, -10, 10, 15, 20, 30, 40])
+  if (m < 20) return pick([-6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6])
+  if (m < 100) return pick([-15, -12, -10, -8, -6, -5, 5, 6, 8, 10, 12, 15])
+  return pick([-40, -30, -20, -15, -10, 10, 15, 20, 30, 40])
 }
 
 function makeChoices(a1, a2, inject) {
@@ -41,7 +40,7 @@ function makeChoices(a1, a2, inject) {
 export function makeTask() {
   let result
   for (let _ = 0; _ < 100; _++) {
-    result = ch(GENS)()
+    result = pick(GENS)()
     if (result) break
   }
   if (!result) result = fibonacci()

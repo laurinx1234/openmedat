@@ -1,4 +1,4 @@
-import { rnd } from '../../components/Shared.jsx'
+import { rnd } from '../../utils/random.js'
 import { safe } from './helpers.js'
 
 export default function inception() {
