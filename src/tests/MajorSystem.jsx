@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, OptionBtn, ResultScreen, KeyHint, ScoreBar, useSettingsKeyboard, rnd, OPTS, KEYS } from '../components/Shared.jsx'
+import { Card, BackBtn, OptionBtn, ResultScreen, KeyHint, ScoreBar, useSettingsKeyboard, rnd, shuffle, OPTS, KEYS } from '../components/Shared.jsx'
 import { MAJOR, DIGITS } from '../data/major-system.js'
 
 export function makeTask(dir) {

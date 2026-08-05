@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { T } from '../theme.js'
 import { Card, BackBtn, ProgressBar, TimerBadge, OptionBtn, ResultScreen, KeyHint, ScoreBar, NavDots, useTimer, useSettingsKeyboard, OPTS, KEYS, saveStat } from '../components/Shared.jsx'
 import { makeTask } from '../data/gens/index.js'
-export { makeTask }
 
 export function fmtChoice(c) {
   if (c === 'keine') return 'Keine Option ist richtig.'
@@ -14,8 +13,7 @@ export function ZahlenQuiz({ questions, answers, onAnswer, color }) {
   const questionRefs = useRef({})
   const fqRef = useRef(focusedQ)
   const ansRef = useRef(answers)
-  fqRef.current = focusedQ
-  ansRef.current = answers
+  useEffect(() => { fqRef.current = focusedQ; ansRef.current = answers })
 
   useEffect(() => {
     const h = e => {

@@ -160,7 +160,7 @@ export function useSettingsKeyboard(rows, onStart, onBack, active) {
   const [pos, setPos] = useState([0, 0])
   const ref = useRef({})
   // Always keep ref current so the handler sees latest values
-  ref.current = { pos, rows, onStart, onBack, active }
+  useEffect(() => { ref.current = { pos, rows, onStart, onBack, active } })
 
   useEffect(() => {
     if (!active) return  // detach when not in settings mode
@@ -197,7 +197,7 @@ export function useSettingsKeyboard(rows, onStart, onBack, active) {
 
   return {
     isFocused: (r, c) => pos[0]===r && pos[1]===c,
-    isStartFocused: () => pos[0] >= ref.current.rows.length,
+    isStartFocused: () => pos[0] >= rows.length,
   }
 }
 

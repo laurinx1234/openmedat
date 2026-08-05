@@ -731,6 +731,4 @@ export default function Figuren({ onBack }) {
       </Card>
     </div>
   )
-
-  return null
 }
