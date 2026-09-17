@@ -14,7 +14,7 @@ Alle Daten (Statistiken, laufende Sessions) bleiben im Browser der jeweiligen Pe
 | 💳 Allergieausweise       | Merkphase → Wartezeit → Abfrage                                                                            | konfigurierbar (2–8 Ausweise, 5–25 Fragen) |
 | 🔷 Figuren zusammensetzen | Einzelteile zu einer Figur zusammensetzen, zusätzlich Winkel üben                                          | 15 Aufgaben (20 Min) oder Endlosmodus      |
 | 🔗 Major-System           | Zahlen ↔ Bildwörter (Ziffern 0–9, Zahlen 1–100), Multiple Choice oder Eingabe                              | Einstellungen im Modul                     |
-| 🎓 Simulation             | Kompletter Testtag: alle 5 KFF-Kategorien in Originalreihenfolge mit Zeitlimits und gewichteter Auswertung | fester Ablauf                              |
+| 🎓 Simulation             | Komplette KFF-Simulation: alle 5 KFF-Kategorien in Originalreihenfolge mit Zeitlimits und gewichteter Auswertung | fester Ablauf                              |
 | 📝 Simulationsrechner     | Timer und Auswertung für externe Simulationen                                                              | fester Ablauf                              |
 
 ## Features
