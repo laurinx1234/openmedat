@@ -40,4 +40,3 @@ export function minutesUntilQuiz() {
   const ms = session.quizReadyAt - Date.now()
   return ms <= 0 ? 0 : Math.ceil(ms / 60000)
 }
-

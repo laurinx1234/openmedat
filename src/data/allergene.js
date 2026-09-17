@@ -295,4 +295,6 @@ Limonen
 Linalool
 Eichenmoos
 Baummoos
-`.trim().split('\n')
+`
+  .trim()
+  .split('\n')

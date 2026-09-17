@@ -13,7 +13,21 @@ import cycle3fib from './cycle3fib.js'
 import cycle4 from './cycle4.js'
 import rekurrent from './rekurrent.js'
 
-const GENS = [alternating, rates, inception, cycle3, fibonacci, tribonacci, fibdiff, interleave2, interleave3, times2minus, cycle3fib, cycle4, rekurrent]
+const GENS = [
+  alternating,
+  rates,
+  inception,
+  cycle3,
+  fibonacci,
+  tribonacci,
+  fibdiff,
+  interleave2,
+  interleave3,
+  times2minus,
+  cycle3fib,
+  cycle4,
+  rekurrent,
+]
 
 function plausOff(v) {
   const m = Math.max(1, Math.abs(v))
@@ -23,16 +37,25 @@ function plausOff(v) {
 }
 
 function makeChoices(a1, a2, inject) {
-  const correct = `${a1}|${a2}`, used = new Set([correct])
+  const correct = `${a1}|${a2}`,
+    used = new Set([correct])
   const tryPair = (f1, f2) => {
     for (let _ = 0; _ < 200; _++) {
-      const v1 = f1 !== null ? f1 : a1 + plausOff(a1), v2 = f2 !== null ? f2 : a2 + plausOff(a2), k = `${v1}|${v2}`
-      if (!used.has(k)) { used.add(k); return [v1, v2] }
+      const v1 = f1 !== null ? f1 : a1 + plausOff(a1),
+        v2 = f2 !== null ? f2 : a2 + plausOff(a2),
+        k = `${v1}|${v2}`
+      if (!used.has(k)) {
+        used.add(k)
+        return [v1, v2]
+      }
     }
     return null
   }
   const dist = [tryPair(a1, null), tryPair(null, a2), tryPair(null, null)].filter(Boolean)
-  while (dist.length < (inject ? 4 : 3)) { const p = tryPair(null, null); if (p) dist.push(p) }
+  while (dist.length < (inject ? 4 : 3)) {
+    const p = tryPair(null, null)
+    if (p) dist.push(p)
+  }
   const vis = inject ? dist.slice(0, 4) : [...dist.slice(0, 3), [a1, a2]]
   return [...shuffle(vis), 'keine']
 }
@@ -46,8 +69,8 @@ export function makeTask() {
   if (!result) result = fibonacci()
   const { seq, label } = result
   const [a1, a2] = [seq[7], seq[8]]
-  const inject = Math.random() < 0.20
+  const inject = Math.random() < 0.2
   const choices = makeChoices(a1, a2, inject)
-  const ci = inject ? 4 : choices.findIndex(c => Array.isArray(c) && c[0] === a1 && c[1] === a2)
+  const ci = inject ? 4 : choices.findIndex((c) => Array.isArray(c) && c[0] === a1 && c[1] === a2)
   return { visible: seq.slice(0, 7), answer: [a1, a2], choices, correctIdx: ci, label }
 }

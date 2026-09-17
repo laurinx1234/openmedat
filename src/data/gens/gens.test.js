@@ -53,7 +53,7 @@ describe('makeTask', () => {
       expect(choices.length).toBe(5)
       expect(choices[4]).toBe('keine')
 
-      const keys = choices.slice(0, 4).map(p => `${p[0]}|${p[1]}`)
+      const keys = choices.slice(0, 4).map((p) => `${p[0]}|${p[1]}`)
       expect(new Set(keys).size).toBe(4)
 
       expect(Number.isInteger(correctIdx)).toBe(true)

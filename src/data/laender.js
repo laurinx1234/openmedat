@@ -238,4 +238,6 @@ Westjordanland
 Westsahara
 Zentralafrikanische Republik
 Zypern
-`.trim().split('\n')
+`
+  .trim()
+  .split('\n')

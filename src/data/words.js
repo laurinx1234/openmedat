@@ -816,7 +816,9 @@ VERHAFTUNG
 HAUPTROLLE
 PROTESTANT
 JOURNALIST
-`.trim().split('\n')
+`
+  .trim()
+  .split('\n')
 
-export const WORDS = RAW.filter(w => w.length >= 4 && w.length <= 12 && /^[A-Z]+$/.test(w))
+export const WORDS = RAW.filter((w) => w.length >= 4 && w.length <= 12 && /^[A-Z]+$/.test(w))
 export const UNIQUE_WORDS = [...new Set(WORDS)]

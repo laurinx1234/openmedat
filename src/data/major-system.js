@@ -1,4 +1,5 @@
-export const MAJOR = [null].concat(`
+export const MAJOR = [null].concat(
+  `
 Tee
 Noah
 Mai
@@ -99,17 +100,20 @@ Pauke
 Pfau
 Papa
 Theseus
-`.trim().split('\n'))
+`
+    .trim()
+    .split('\n')
+)
 
 export const DIGITS = [
-  { consonants: "s, ß, ss, z",  word: "Sau" },
-  { consonants: "t, d",         word: "Tee" },
-  { consonants: "n",            word: "Noah" },
-  { consonants: "m",            word: "Mai" },
-  { consonants: "r",            word: "Reh" },
-  { consonants: "l",            word: "Lee" },
-  { consonants: "sch, sh, ch, j", word: "Schi" },
-  { consonants: "k, ck, g",     word: "Kuh" },
-  { consonants: "f, ph, v, w",  word: "Fee" },
-  { consonants: "p, b",         word: "Po" },
+  { consonants: 's, ß, ss, z', word: 'Sau' },
+  { consonants: 't, d', word: 'Tee' },
+  { consonants: 'n', word: 'Noah' },
+  { consonants: 'm', word: 'Mai' },
+  { consonants: 'r', word: 'Reh' },
+  { consonants: 'l', word: 'Lee' },
+  { consonants: 'sch, sh, ch, j', word: 'Schi' },
+  { consonants: 'k, ck, g', word: 'Kuh' },
+  { consonants: 'f, ph, v, w', word: 'Fee' },
+  { consonants: 'p, b', word: 'Po' },
 ]

@@ -6,23 +6,23 @@ import { Card, BackBtn, ProgressBar, useTimer, OPTS, ResumeBanner } from '../com
 // type: 'standard' = A-E choice | 'merken' = timer only | 'emotionen' = 5× binary | 'soziales' = 5× ranking
 
 const SUBTESTS_H = [
-  { name:'Biologie',                  qCount:40, timeMin:30, section:'BMS', type:'standard'  },
-  { name:'Chemie',                    qCount:24, timeMin:18, section:'BMS', type:'standard'  },
-  { name:'Physik',                    qCount:18, timeMin:16, section:'BMS', type:'standard'  },
-  { name:'Mathematik',                qCount:12, timeMin:11, section:'BMS', type:'standard'  },
-  { name:'Textverständnis',           qCount:12, timeMin:35, section:'BMS', type:'standard'  },
-  { name:'Figuren zusammensetzen',    qCount:15, timeMin:20, section:'KFF', type:'standard'  },
-  { name:'Allergieausweise (Merken)', qCount:8,  timeMin:8,  section:'KFF', type:'merken'    },
-  { name:'Zahlenfolgen',              qCount:10, timeMin:15, section:'KFF', type:'standard'  },
-  { name:'Wortflüssigkeit',           qCount:15, timeMin:20, section:'KFF', type:'standard'  },
-  { name:'Allergieausweise (Abfrage)',qCount:25, timeMin:15, section:'KFF', type:'standard'  },
-  { name:'Implikationen erkennen',    qCount:10, timeMin:10, section:'KFF', type:'standard'  },
-  { name:'Emotionen regulieren',      qCount:12, timeMin:18, section:'SEK', type:'standard'  },
-  { name:'Emotionen erkennen',        qCount:14, timeMin:21, section:'SEK', type:'emotionen' },
-  { name:'Soziales Entscheiden',      qCount:14, timeMin:21, section:'SEK', type:'soziales'  },
+  { name: 'Biologie', qCount: 40, timeMin: 30, section: 'BMS', type: 'standard' },
+  { name: 'Chemie', qCount: 24, timeMin: 18, section: 'BMS', type: 'standard' },
+  { name: 'Physik', qCount: 18, timeMin: 16, section: 'BMS', type: 'standard' },
+  { name: 'Mathematik', qCount: 12, timeMin: 11, section: 'BMS', type: 'standard' },
+  { name: 'Textverständnis', qCount: 12, timeMin: 35, section: 'BMS', type: 'standard' },
+  { name: 'Figuren zusammensetzen', qCount: 15, timeMin: 20, section: 'KFF', type: 'standard' },
+  { name: 'Allergieausweise (Merken)', qCount: 8, timeMin: 8, section: 'KFF', type: 'merken' },
+  { name: 'Zahlenfolgen', qCount: 10, timeMin: 15, section: 'KFF', type: 'standard' },
+  { name: 'Wortflüssigkeit', qCount: 15, timeMin: 20, section: 'KFF', type: 'standard' },
+  { name: 'Allergieausweise (Abfrage)', qCount: 25, timeMin: 15, section: 'KFF', type: 'standard' },
+  { name: 'Implikationen erkennen', qCount: 10, timeMin: 10, section: 'KFF', type: 'standard' },
+  { name: 'Emotionen regulieren', qCount: 12, timeMin: 18, section: 'SEK', type: 'standard' },
+  { name: 'Emotionen erkennen', qCount: 14, timeMin: 21, section: 'SEK', type: 'emotionen' },
+  { name: 'Soziales Entscheiden', qCount: 14, timeMin: 21, section: 'SEK', type: 'soziales' },
 ]
 
-const SECTION_WEIGHTS = { BMS:0.4, KFF:0.4, SEK:0.1, TV:0.1 }
+const SECTION_WEIGHTS = { BMS: 0.4, KFF: 0.4, SEK: 0.1, TV: 0.1 }
 
 function getScoredItems(st) {
   if (st.type === 'merken' || st.type === 'pause') return 0
@@ -39,7 +39,7 @@ function computeWeights(subtests) {
     bySection[sec].push(st)
   }
   // Compute weight per subtest
-  const weights = subtests.map(st => {
+  const weights = subtests.map((st) => {
     const sec = st.section === 'BMS' && st.name === 'Textverständnis' ? 'TV' : st.section
     const secWeight = sectionW[sec] || 0
     const secItems = bySection[sec].reduce((s, x) => s + getScoredItems(x), 0)
@@ -60,8 +60,8 @@ function formatTime(seconds) {
 function TimerDisplay({ seconds }) {
   const col = seconds < 30 ? T.red : seconds < 120 ? T.yellow : T.teal
   return (
-    <div style={{ textAlign:'center', marginBottom:20 }}>
-      <span style={{ color:col, fontSize:48, fontWeight:'bold', fontVariantNumeric:'tabular-nums' }}>
+    <div style={{ textAlign: 'center', marginBottom: 20 }}>
+      <span style={{ color: col, fontSize: 48, fontWeight: 'bold', fontVariantNumeric: 'tabular-nums' }}>
         {formatTime(seconds)}
       </span>
     </div>
@@ -70,10 +70,18 @@ function TimerDisplay({ seconds }) {
 
 function btnStyle({ bg, border, fg, small }) {
   return {
-    background:bg, border:`1px solid ${border}`, borderRadius:small?4:6,
-    color:fg, cursor:'pointer', fontSize:small?11:13, fontWeight:500,
-    padding:small?'4px 8px':'6px 12px', display:'inline-flex', alignItems:'center',
-    justifyContent:'center', flexShrink:0,
+    background: bg,
+    border: `1px solid ${border}`,
+    borderRadius: small ? 4 : 6,
+    color: fg,
+    cursor: 'pointer',
+    fontSize: small ? 11 : 13,
+    fontWeight: 500,
+    padding: small ? '4px 8px' : '6px 12px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   }
 }
 
@@ -82,33 +90,75 @@ function btnStyle({ bg, border, fg, small }) {
 function StandardGrid({ qCount, answers, onChange, correctAnswers, mode }) {
   const cols = qCount <= 5 ? 1 : qCount <= 12 ? 2 : qCount <= 20 ? 3 : 4
   return (
-    <div style={{ display:'grid', gridTemplateColumns:`repeat(${cols}, 1fr)`, gap:4 }}>
-      {Array.from({ length:qCount }, (_, i) => {
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 4 }}>
+      {Array.from({ length: qCount }, (_, i) => {
         const userAns = answers?.[i] ?? null
         const correctAns = correctAnswers?.[i] ?? null
         return (
-          <div key={i} style={{ display:'flex', alignItems:'center', gap:4, padding:'3px 4px', borderRadius:6,
-            background: (mode === 'results' && correctAns != null && userAns != null) ? (userAns === correctAns ? `${T.green}22` : `${T.red}22`) : 'transparent' }}>
-            <span style={{ color:T.muted, fontSize:11, minWidth:22, textAlign:'right', flexShrink:0 }}>{i + 1}</span>
-            {OPTS.map(opt => {
-              let bg = T.surf2, border = T.border, fg = T.muted
-              if (mode === 'results' && correctAns === opt) { bg = `${T.green}22`; border = T.green; fg = T.green }
+          <div
+            key={i}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '3px 4px',
+              borderRadius: 6,
+              background:
+                mode === 'results' && correctAns != null && userAns != null
+                  ? userAns === correctAns
+                    ? `${T.green}22`
+                    : `${T.red}22`
+                  : 'transparent',
+            }}
+          >
+            <span style={{ color: T.muted, fontSize: 11, minWidth: 22, textAlign: 'right', flexShrink: 0 }}>
+              {i + 1}
+            </span>
+            {OPTS.map((opt) => {
+              let bg = T.surf2,
+                border = T.border,
+                fg = T.muted
+              if (mode === 'results' && correctAns === opt) {
+                bg = `${T.green}22`
+                border = T.green
+                fg = T.green
+              }
               if (userAns === opt) {
                 if (mode === 'results') {
                   bg = userAns === correctAns ? `${T.green}33` : `${T.red}33`
                   border = userAns === correctAns ? T.green : T.red
                   fg = userAns === correctAns ? T.green : T.red
-                } else { bg = `${T.orange}33`; border = T.orange; fg = T.orange }
+                } else {
+                  bg = `${T.orange}33`
+                  border = T.orange
+                  fg = T.orange
+                }
               }
               return (
-                <button key={opt} onClick={() => onChange?.(i, userAns === opt ? null : opt)}
-                  disabled={mode==='results'||!onChange}
+                <button
+                  key={opt}
+                  onClick={() => onChange?.(i, userAns === opt ? null : opt)}
+                  disabled={mode === 'results' || !onChange}
                   data-qidx={i}
-                  style={{ width:24, height:24, borderRadius:4, border:`1px solid ${border}`,
-                    background:bg, color:fg, cursor:mode==='results'||!onChange?'default':'pointer',
-                    fontSize:11, fontWeight:userAns===opt?700:400, padding:0,
-                    display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}
-                >{opt}</button>
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 4,
+                    border: `1px solid ${border}`,
+                    background: bg,
+                    color: fg,
+                    cursor: mode === 'results' || !onChange ? 'default' : 'pointer',
+                    fontSize: 11,
+                    fontWeight: userAns === opt ? 700 : 400,
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {opt}
+                </button>
               )
             })}
           </div>
@@ -120,41 +170,106 @@ function StandardGrid({ qCount, answers, onChange, correctAnswers, mode }) {
 
 function EmotionenGrid({ qCount, answers, onChange, correctAnswers, mode }) {
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-      {Array.from({ length:qCount }, (_, exIdx) => {
-        const row = answers?.[exIdx] ?? [null,null,null,null,null]
-        const correctRow = correctAnswers?.[exIdx] ?? [null,null,null,null,null]
-        const allFilled = row.every(v=>v!=null) && correctRow.every(v=>v!=null)
-        const allCorrect = allFilled && row.every((v,oi)=>v===correctRow[oi])
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {Array.from({ length: qCount }, (_, exIdx) => {
+        const row = answers?.[exIdx] ?? [null, null, null, null, null]
+        const correctRow = correctAnswers?.[exIdx] ?? [null, null, null, null, null]
+        const allFilled = row.every((v) => v != null) && correctRow.every((v) => v != null)
+        const allCorrect = allFilled && row.every((v, oi) => v === correctRow[oi])
         return (
-          <div key={exIdx} style={{ background:(mode==='results'&&allFilled)?(allCorrect?`${T.green}22`:`${T.red}22`):T.surf2, borderRadius:8, padding:8 }}>
-            <div style={{ color:T.muted, fontSize:11, marginBottom:6 }}>Beispiel {exIdx + 1}</div>
+          <div
+            key={exIdx}
+            style={{
+              background: mode === 'results' && allFilled ? (allCorrect ? `${T.green}22` : `${T.red}22`) : T.surf2,
+              borderRadius: 8,
+              padding: 8,
+            }}
+          >
+            <div style={{ color: T.muted, fontSize: 11, marginBottom: 6 }}>Beispiel {exIdx + 1}</div>
             {OPTS.map((opt, oi) => {
               const val = row[oi]
               const correctVal = correctRow[oi]
               return (
-                <div key={opt} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
-                  <span style={{ color:T.muted, fontSize:11, minWidth:14 }}>{opt}</span>
-                  <button onClick={() => onChange?.(exIdx, oi, val === true ? null : true)}
-                    disabled={mode==='results'||!onChange}
-                    data-qidx={exIdx} data-subidx={oi} data-val="true"
-                    style={{ ...btnStyle({
-                      bg:mode==='results'&&correctVal===true?`${T.green}22`:mode==='results'&&val===true?`${T.red}22`:val===true?`${T.orange}33`:T.surf2,
-                      border:mode==='results'&&correctVal===true?T.green:mode==='results'&&val===true?T.red:val===true?T.orange:T.border,
-                      fg:mode==='results'&&correctVal===true?T.green:mode==='results'&&val===true?T.red:val===true?T.orange:T.muted,
-                      small:true
-                    }), minWidth:130 }}
-                  >eher wahrscheinlich</button>
-                  <button onClick={() => onChange?.(exIdx, oi, val === false ? null : false)}
-                    disabled={mode==='results'||!onChange}
-                    data-qidx={exIdx} data-subidx={oi} data-val="false"
-                    style={{ ...btnStyle({
-                      bg:mode==='results'&&correctVal===false?`${T.green}22`:mode==='results'&&val===false?`${T.red}22`:val===false?`${T.orange}33`:T.surf2,
-                      border:mode==='results'&&correctVal===false?T.green:mode==='results'&&val===false?T.red:val===false?T.orange:T.border,
-                      fg:mode==='results'&&correctVal===false?T.green:mode==='results'&&val===false?T.red:val===false?T.orange:T.muted,
-                      small:true
-                    }), minWidth:130 }}
-                  >eher unwahrscheinlich</button>
+                <div key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                  <span style={{ color: T.muted, fontSize: 11, minWidth: 14 }}>{opt}</span>
+                  <button
+                    onClick={() => onChange?.(exIdx, oi, val === true ? null : true)}
+                    disabled={mode === 'results' || !onChange}
+                    data-qidx={exIdx}
+                    data-subidx={oi}
+                    data-val="true"
+                    style={{
+                      ...btnStyle({
+                        bg:
+                          mode === 'results' && correctVal === true
+                            ? `${T.green}22`
+                            : mode === 'results' && val === true
+                              ? `${T.red}22`
+                              : val === true
+                                ? `${T.orange}33`
+                                : T.surf2,
+                        border:
+                          mode === 'results' && correctVal === true
+                            ? T.green
+                            : mode === 'results' && val === true
+                              ? T.red
+                              : val === true
+                                ? T.orange
+                                : T.border,
+                        fg:
+                          mode === 'results' && correctVal === true
+                            ? T.green
+                            : mode === 'results' && val === true
+                              ? T.red
+                              : val === true
+                                ? T.orange
+                                : T.muted,
+                        small: true,
+                      }),
+                      minWidth: 130,
+                    }}
+                  >
+                    eher wahrscheinlich
+                  </button>
+                  <button
+                    onClick={() => onChange?.(exIdx, oi, val === false ? null : false)}
+                    disabled={mode === 'results' || !onChange}
+                    data-qidx={exIdx}
+                    data-subidx={oi}
+                    data-val="false"
+                    style={{
+                      ...btnStyle({
+                        bg:
+                          mode === 'results' && correctVal === false
+                            ? `${T.green}22`
+                            : mode === 'results' && val === false
+                              ? `${T.red}22`
+                              : val === false
+                                ? `${T.orange}33`
+                                : T.surf2,
+                        border:
+                          mode === 'results' && correctVal === false
+                            ? T.green
+                            : mode === 'results' && val === false
+                              ? T.red
+                              : val === false
+                                ? T.orange
+                                : T.border,
+                        fg:
+                          mode === 'results' && correctVal === false
+                            ? T.green
+                            : mode === 'results' && val === false
+                              ? T.red
+                              : val === false
+                                ? T.orange
+                                : T.muted,
+                        small: true,
+                      }),
+                      minWidth: 130,
+                    }}
+                  >
+                    eher unwahrscheinlich
+                  </button>
                 </div>
               )
             })}
@@ -166,44 +281,76 @@ function EmotionenGrid({ qCount, answers, onChange, correctAnswers, mode }) {
 }
 
 function SozialesGrid({ qCount, answers, onChange, correctAnswers, mode }) {
-  const ranks = [1,2,3,4,5]
+  const ranks = [1, 2, 3, 4, 5]
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(380px, 1fr))', gap:8 }}>
-      {Array.from({ length:qCount }, (_, exIdx) => {
-        const row = answers?.[exIdx] ?? [null,null,null,null,null]
-        const correctRow = correctAnswers?.[exIdx] ?? [null,null,null,null,null]
-        const allFilled = row.every(v=>v!=null) && correctRow.every(v=>v!=null)
-        const allCorrect = allFilled && row.every((v,oi)=>v===correctRow[oi])
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 8 }}>
+      {Array.from({ length: qCount }, (_, exIdx) => {
+        const row = answers?.[exIdx] ?? [null, null, null, null, null]
+        const correctRow = correctAnswers?.[exIdx] ?? [null, null, null, null, null]
+        const allFilled = row.every((v) => v != null) && correctRow.every((v) => v != null)
+        const allCorrect = allFilled && row.every((v, oi) => v === correctRow[oi])
         return (
-          <div key={exIdx} style={{ background:(mode==='results'&&allFilled)?(allCorrect?`${T.green}22`:`${T.red}22`):T.surf2, borderRadius:8, padding:8 }}>
-            <div style={{ color:T.muted, fontSize:11, marginBottom:6 }}>Beispiel {exIdx + 1}</div>
+          <div
+            key={exIdx}
+            style={{
+              background: mode === 'results' && allFilled ? (allCorrect ? `${T.green}22` : `${T.red}22`) : T.surf2,
+              borderRadius: 8,
+              padding: 8,
+            }}
+          >
+            <div style={{ color: T.muted, fontSize: 11, marginBottom: 6 }}>Beispiel {exIdx + 1}</div>
             {OPTS.map((opt, oi) => {
               const val = row[oi]
               const correctVal = correctRow[oi]
               return (
-                <div key={opt} style={{ display:'flex', alignItems:'center', gap:4, marginBottom:3 }}>
-                  <span style={{ color:T.muted, fontSize:11, minWidth:14, flexShrink:0 }}>{opt}</span>
-                  <div style={{ display:'flex', flex:1, justifyContent:'space-around' }}>
-                    {ranks.map(r => {
-                      const isCorrect = mode==='results' && correctVal === r
+                <div key={opt} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                  <span style={{ color: T.muted, fontSize: 11, minWidth: 14, flexShrink: 0 }}>{opt}</span>
+                  <div style={{ display: 'flex', flex: 1, justifyContent: 'space-around' }}>
+                    {ranks.map((r) => {
+                      const isCorrect = mode === 'results' && correctVal === r
                       const isSel = val === r
-                      let bg = T.surf2, border = T.border, fg = T.muted
-                      if (isCorrect && mode==='results') { bg = `${T.green}22`; border = T.green; fg = T.green }
+                      let bg = T.surf2,
+                        border = T.border,
+                        fg = T.muted
+                      if (isCorrect && mode === 'results') {
+                        bg = `${T.green}22`
+                        border = T.green
+                        fg = T.green
+                      }
                       if (isSel) {
-                        if (mode==='results') {
+                        if (mode === 'results') {
                           bg = isCorrect ? `${T.green}33` : `${T.red}33`
                           border = isCorrect ? T.green : T.red
                           fg = isCorrect ? T.green : T.red
-                        } else { bg = `${T.orange}33`; border = T.orange; fg = T.orange }
+                        } else {
+                          bg = `${T.orange}33`
+                          border = T.orange
+                          fg = T.orange
+                        }
                       }
                       return (
-                        <button key={r} onClick={() => onChange?.(exIdx, oi, val === r ? null : r)}
-                          disabled={mode==='results'||!onChange}
-                          data-qidx={exIdx} data-subidx={oi} data-val={r}
-                          style={{ width:26, height:26, borderRadius:4, border:`1px solid ${border}`,
-                            background:bg, color:fg, cursor:mode==='results'||!onChange?'default':'pointer',
-                            fontSize:12, fontWeight:isSel?700:400, padding:0 }}
-                        >{r}</button>
+                        <button
+                          key={r}
+                          onClick={() => onChange?.(exIdx, oi, val === r ? null : r)}
+                          disabled={mode === 'results' || !onChange}
+                          data-qidx={exIdx}
+                          data-subidx={oi}
+                          data-val={r}
+                          style={{
+                            width: 26,
+                            height: 26,
+                            borderRadius: 4,
+                            border: `1px solid ${border}`,
+                            background: bg,
+                            color: fg,
+                            cursor: mode === 'results' || !onChange ? 'default' : 'pointer',
+                            fontSize: 12,
+                            fontWeight: isSel ? 700 : 400,
+                            padding: 0,
+                          }}
+                        >
+                          {r}
+                        </button>
                       )
                     })}
                   </div>
@@ -221,49 +368,84 @@ function SozialesGrid({ qCount, answers, onChange, correctAnswers, mode }) {
 
 function SubtestNav({ subtests, currentIdx, answers, correctAnswers }) {
   return (
-    <div style={{ display:'flex', gap:2, flexWrap:'wrap', marginBottom:16 }}>
+    <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', marginBottom: 16 }}>
       {subtests.map((st, i) => {
         const isCurrent = i === currentIdx
         const inPast = i < currentIdx
         const isPause = st.type === 'pause'
-        let bg = T.surf2, border = T.border, fg = T.muted
-        if (isPause) { bg = `${T.yellow}10`; border = `${T.yellow}33`; fg = T.yellow }
-        if (isCurrent) { bg = `${T.orange}33`; border = T.orange; fg = T.orange }
-        else if (inPast) { bg = `${T.orange}18`; border = `${T.orange}44`; fg = T.muted }
+        let bg = T.surf2,
+          border = T.border,
+          fg = T.muted
+        if (isPause) {
+          bg = `${T.yellow}10`
+          border = `${T.yellow}33`
+          fg = T.yellow
+        }
+        if (isCurrent) {
+          bg = `${T.orange}33`
+          border = T.orange
+          fg = T.orange
+        } else if (inPast) {
+          bg = `${T.orange}18`
+          border = `${T.orange}44`
+          fg = T.muted
+        }
         // Scoring in review/results (pct based on total items: unanswered = wrong)
         let pct = null
         if (correctAnswers[i] && st.type !== 'merken' && st.type !== 'pause') {
-          let scored = 0, correct = 0
+          let scored = 0,
+            correct = 0
           if (st.type === 'standard') {
-            for (let qi=0; qi<st.qCount; qi++) {
-              if (correctAnswers[i][qi]!=null && answers[i]?.[qi]!=null) { scored++; if (answers[i][qi]===correctAnswers[i][qi]) correct++ }
+            for (let qi = 0; qi < st.qCount; qi++) {
+              if (correctAnswers[i][qi] != null && answers[i]?.[qi] != null) {
+                scored++
+                if (answers[i][qi] === correctAnswers[i][qi]) correct++
+              }
             }
           } else if (st.type === 'emotionen') {
-            for (let ei=0; ei<st.qCount; ei++) {
-              const uRow = answers[i]?.[ei]; const cRow = correctAnswers[i]?.[ei]
+            for (let ei = 0; ei < st.qCount; ei++) {
+              const uRow = answers[i]?.[ei]
+              const cRow = correctAnswers[i]?.[ei]
               if (!uRow || !cRow) continue
-              if (!uRow.every(v=>v!=null) || !cRow.every(v=>v!=null)) continue
-              scored++; if (uRow.every((v,oi)=>v===cRow[oi])) correct++
+              if (!uRow.every((v) => v != null) || !cRow.every((v) => v != null)) continue
+              scored++
+              if (uRow.every((v, oi) => v === cRow[oi])) correct++
             }
           } else if (st.type === 'soziales') {
-            for (let ei=0; ei<st.qCount; ei++) {
-              const uRow = answers[i]?.[ei]; const cRow = correctAnswers[i]?.[ei]
+            for (let ei = 0; ei < st.qCount; ei++) {
+              const uRow = answers[i]?.[ei]
+              const cRow = correctAnswers[i]?.[ei]
               if (!uRow || !cRow) continue
-              if (!uRow.every(v=>v!=null) || !cRow.every(v=>v!=null)) continue
+              if (!uRow.every((v) => v != null) || !cRow.every((v) => v != null)) continue
               scored++
               let diffSum = 0
-              for (let oi=0; oi<5; oi++) diffSum += Math.abs(uRow[oi] - cRow[oi])
+              for (let oi = 0; oi < 5; oi++) diffSum += Math.abs(uRow[oi] - cRow[oi])
               correct += 1 - diffSum / 12
             }
           }
           const total = getScoredItems(st)
-          if (total > 0 && scored > 0) pct = Math.round(correct/total*100)
+          if (total > 0 && scored > 0) pct = Math.round((correct / total) * 100)
         }
         return (
-          <div key={i} style={{ background:bg, border:`1px solid ${border}`, borderRadius:6,
-            padding:'4px 6px', fontSize:10, color:fg, textAlign:'center', minWidth:isPause?20:26 }}>
-            <div style={{ fontWeight:isCurrent?700:400, fontSize:isPause?14:10 }}>{isPause?'🍽':i+1}</div>
-            {pct != null && <div style={{ color:pct>=70?T.green:pct>=40?T.yellow:T.red, fontSize:9 }}>{pct}%</div>}
+          <div
+            key={i}
+            style={{
+              background: bg,
+              border: `1px solid ${border}`,
+              borderRadius: 6,
+              padding: '4px 6px',
+              fontSize: 10,
+              color: fg,
+              textAlign: 'center',
+              minWidth: isPause ? 20 : 26,
+            }}
+          >
+            <div style={{ fontWeight: isCurrent ? 700 : 400, fontSize: isPause ? 14 : 10 }}>
+              {isPause ? '🍽' : i + 1}
+            </div>
+            {pct != null && (
+              <div style={{ color: pct >= 70 ? T.green : pct >= 40 ? T.yellow : T.red, fontSize: 9 }}>{pct}%</div>
+            )}
           </div>
         )
       })}
@@ -291,7 +473,9 @@ function saveSimRechnerSession(data) {
     } else {
       localStorage.removeItem(SIMRECHNER_STORAGE_KEY)
     }
-  } catch (e) { /* localStorage unavailable */ }
+  } catch (e) {
+    /* localStorage unavailable */
+  }
 }
 
 function clearSimRechnerSession() {
@@ -300,11 +484,11 @@ function clearSimRechnerSession() {
 
 export default function Simulationsrechner({ onBack }) {
   const [savedSession, setSavedSession] = useState(() => loadSimRechnerSession())
-  const isRecent = savedSession && (Date.now() - (savedSession.savedAt || 0) < 24 * 3600 * 1000)
+  const isRecent = savedSession && Date.now() - (savedSession.savedAt || 0) < 24 * 3600 * 1000
   const resumableSession = isRecent && savedSession.phase && savedSession.phase !== 'settings' ? savedSession : null
 
   const [phase, setPhase] = useState('settings')
-  const [includePause, setIncludePause] = useState(() => savedSession ? (savedSession.includePause ?? true) : true)
+  const [includePause, setIncludePause] = useState(() => (savedSession ? (savedSession.includePause ?? true) : true))
   const [currentIdx, setCurrentIdx] = useState(0)
   const [timerPaused, setTimerPaused] = useState(false)
 
@@ -317,9 +501,9 @@ export default function Simulationsrechner({ onBack }) {
   function buildSubtests() {
     const sts = [...SUBTESTS_H]
     if (includePause) {
-      const idx = sts.findIndex(s => s.name === 'Textverständnis')
+      const idx = sts.findIndex((s) => s.name === 'Textverständnis')
       if (idx >= 0) {
-        sts.splice(idx + 1, 0, { name:'Mittagspause', qCount:0, timeMin:60, section:null, type:'pause' })
+        sts.splice(idx + 1, 0, { name: 'Mittagspause', qCount: 0, timeMin: 60, section: null, type: 'pause' })
       }
     }
     return sts
@@ -330,9 +514,10 @@ export default function Simulationsrechner({ onBack }) {
   subtestsRef.current = subtests
 
   function initAnswers(sts) {
-    return sts.map(st => {
+    return sts.map((st) => {
       if (st.type === 'merken' || st.type === 'pause') return null
-      if (st.type === 'emotionen' || st.type === 'soziales') return Array.from({length:st.qCount}, () => Array(5).fill(null))
+      if (st.type === 'emotionen' || st.type === 'soziales')
+        return Array.from({ length: st.qCount }, () => Array(5).fill(null))
       return Array(st.qCount).fill(null)
     })
   }
@@ -389,25 +574,27 @@ export default function Simulationsrechner({ onBack }) {
 
   function describeResumable(s) {
     if (!s) return null
-    const total = (s.userAnswers?.length || 0)
+    const total = s.userAnswers?.length || 0
     let filled = 0
     for (const row of s.userAnswers || []) {
       if (!row) continue
       if (Array.isArray(row)) {
         for (const r of row) {
           if (r == null) continue
-          if (Array.isArray(r)) { if (r.every(v => v != null)) filled++ }
-          else filled++
+          if (Array.isArray(r)) {
+            if (r.every((v) => v != null)) filled++
+          } else filled++
         }
       } else filled++
     }
     const phaseMap = { test: 'Test läuft', review: 'Lösungen eingeben', results: 'Ergebnisse' }
     const where = phaseMap[s.phase] || s.phase
-    const part = s.phase === 'test'
-      ? `Untertest ${(s.currentIdx ?? 0) + 1} · ${filled} Antworten`
-      : s.phase === 'review'
-        ? `Lösungsschablone · ${filled} ausgefüllt`
-        : 'Auswertung bereit'
+    const part =
+      s.phase === 'test'
+        ? `Untertest ${(s.currentIdx ?? 0) + 1} · ${filled} Antworten`
+        : s.phase === 'review'
+          ? `Lösungsschablone · ${filled} ausgefüllt`
+          : 'Auswertung bereit'
     return { detail: `${where} · ${part}` }
   }
 
@@ -466,26 +653,26 @@ export default function Simulationsrechner({ onBack }) {
 
   // Answer setters
   function setUserAnswer(qIdx, opt) {
-    setUserAnswers(prev => {
-      const next = prev.map(a => a ? [...a] : null)
+    setUserAnswers((prev) => {
+      const next = prev.map((a) => (a ? [...a] : null))
       next[currentIdx][qIdx] = opt
       return next
     })
   }
 
   function setUserAnswerEmotionen(exIdx, oi, val) {
-    setUserAnswers(prev => {
-      const next = prev.map(a => a ? [...a] : null)
-      next[currentIdx] = next[currentIdx].map(r => [...r])
+    setUserAnswers((prev) => {
+      const next = prev.map((a) => (a ? [...a] : null))
+      next[currentIdx] = next[currentIdx].map((r) => [...r])
       next[currentIdx][exIdx][oi] = val
       return next
     })
   }
 
   function setUserAnswerSoziales(exIdx, oi, rank) {
-    setUserAnswers(prev => {
-      const next = prev.map(a => a ? [...a] : null)
-      next[currentIdx] = next[currentIdx].map(r => [...r])
+    setUserAnswers((prev) => {
+      const next = prev.map((a) => (a ? [...a] : null))
+      next[currentIdx] = next[currentIdx].map((r) => [...r])
       // If another option already has this rank, clear it
       for (let j = 0; j < 5; j++) {
         if (j !== oi && next[currentIdx][exIdx][j] === rank) {
@@ -498,26 +685,26 @@ export default function Simulationsrechner({ onBack }) {
   }
 
   function setCorrectAnswer(qIdx, opt) {
-    setCorrectAnswers(prev => {
-      const next = prev.map(a => a ? [...a] : null)
+    setCorrectAnswers((prev) => {
+      const next = prev.map((a) => (a ? [...a] : null))
       next[currentIdx][qIdx] = opt
       return next
     })
   }
 
   function setCorrectAnswerEmotionen(exIdx, oi, val) {
-    setCorrectAnswers(prev => {
-      const next = prev.map(a => a ? [...a] : null)
-      next[currentIdx] = next[currentIdx].map(r => [...r])
+    setCorrectAnswers((prev) => {
+      const next = prev.map((a) => (a ? [...a] : null))
+      next[currentIdx] = next[currentIdx].map((r) => [...r])
       next[currentIdx][exIdx][oi] = val
       return next
     })
   }
 
   function setCorrectAnswerSoziales(exIdx, oi, rank) {
-    setCorrectAnswers(prev => {
-      const next = prev.map(a => a ? [...a] : null)
-      next[currentIdx] = next[currentIdx].map(r => [...r])
+    setCorrectAnswers((prev) => {
+      const next = prev.map((a) => (a ? [...a] : null))
+      next[currentIdx] = next[currentIdx].map((r) => [...r])
       for (let j = 0; j < 5; j++) {
         if (j !== oi && next[currentIdx][exIdx][j] === rank) {
           next[currentIdx][exIdx][j] = null
@@ -534,7 +721,8 @@ export default function Simulationsrechner({ onBack }) {
     const sectionW = SECTION_WEIGHTS
 
     const breakdown = subtests.map((st, i) => {
-      let scored = 0, correct = 0
+      let scored = 0,
+        correct = 0
       if (st.type === 'standard') {
         for (let qi = 0; qi < st.qCount; qi++) {
           if (correctAnswers[i]?.[qi] != null && userAnswers[i]?.[qi] != null) {
@@ -548,7 +736,7 @@ export default function Simulationsrechner({ onBack }) {
           const userRow = userAnswers[i]?.[ei]
           const correctRow = correctAnswers[i]?.[ei]
           if (!userRow || !correctRow) continue
-          const allAnswered = userRow.every(v => v != null) && correctRow.every(v => v != null)
+          const allAnswered = userRow.every((v) => v != null) && correctRow.every((v) => v != null)
           if (!allAnswered) continue
           scored++
           if (userRow.every((v, oi) => v === correctRow[oi])) correct++
@@ -559,7 +747,7 @@ export default function Simulationsrechner({ onBack }) {
           const userRow = userAnswers[i]?.[ei]
           const correctRow = correctAnswers[i]?.[ei]
           if (!userRow || !correctRow) continue
-          const allAnswered = userRow.every(v => v != null) && correctRow.every(v => v != null)
+          const allAnswered = userRow.every((v) => v != null) && correctRow.every((v) => v != null)
           if (!allAnswered) continue
           scored++
           let diffSum = 0
@@ -572,19 +760,19 @@ export default function Simulationsrechner({ onBack }) {
     })
 
     // Per-subtest pct uses TOTAL items (not just scored), matching Excel: unanswered = wrong
-    const breakdownWithPct = breakdown.map(b => {
+    const breakdownWithPct = breakdown.map((b) => {
       const total = getScoredItems(b)
       return { ...b, pct: total > 0 ? b.correct / total : null }
     })
-    const totalItems = breakdown.reduce((s,b) => s + getScoredItems(b), 0)
-    const totalScored = breakdown.reduce((s,b) => s + b.scored, 0)
-    const totalCorrect = breakdown.reduce((s,b) => s + b.correct, 0)
+    const totalItems = breakdown.reduce((s, b) => s + getScoredItems(b), 0)
+    const totalScored = breakdown.reduce((s, b) => s + b.scored, 0)
+    const totalCorrect = breakdown.reduce((s, b) => s + b.correct, 0)
 
     // Gesamtscore per Excel: section correct / section TOTAL items, then × section weight
     const secData = {}
     for (const b of breakdown) {
       const sec = b.section === 'BMS' && b.name === 'Textverständnis' ? 'TV' : b.section
-      if (!secData[sec]) secData[sec] = { correct:0, total:0 }
+      if (!secData[sec]) secData[sec] = { correct: 0, total: 0 }
       secData[sec].correct += b.correct
       secData[sec].total += getScoredItems(b)
     }
@@ -596,22 +784,30 @@ export default function Simulationsrechner({ onBack }) {
       }
     }
 
-    return { breakdown: breakdownWithPct, totalScored, totalCorrect, totalItems, totalPct: totalItems > 0 ? totalCorrect/totalItems : null, gesamtScore }
+    return {
+      breakdown: breakdownWithPct,
+      totalScored,
+      totalCorrect,
+      totalItems,
+      totalPct: totalItems > 0 ? totalCorrect / totalItems : null,
+      gesamtScore,
+    }
   }
 
   // Count filled answers for review summary
   function countFilled(answersArr, sts) {
-    let filled = 0, total = 0
+    let filled = 0,
+      total = 0
     for (let i = 0; i < sts.length; i++) {
       const st = sts[i]
       if (st.type === 'merken' || st.type === 'pause') continue
       total += st.qCount
       if (st.type === 'standard') {
-        filled += answersArr[i]?.filter(a => a != null).length ?? 0
+        filled += answersArr[i]?.filter((a) => a != null).length ?? 0
       } else if (st.type === 'emotionen' || st.type === 'soziales') {
         for (let ei = 0; ei < st.qCount; ei++) {
           const row = answersArr[i]?.[ei]
-          if (row && row.every(v => v != null)) filled++
+          if (row && row.every((v) => v != null)) filled++
         }
       }
     }
@@ -652,9 +848,9 @@ export default function Simulationsrechner({ onBack }) {
       // Fix corrupted standard entries: corrupt version has strings wrapped in arrays ['A']→'A'
       const fix = (arr) => {
         if (!arr) return arr
-        return arr.map(item => {
+        return arr.map((item) => {
           if (Array.isArray(item) && item.length === 1 && typeof item[0] === 'string') {
-            return item[0]  // unwrap
+            return item[0] // unwrap
           }
           return item
         })
@@ -672,7 +868,8 @@ export default function Simulationsrechner({ onBack }) {
       // Re-run computeResults with fixed data
       const weights = computeWeights(sts)
       const breakdown = sts.map((st, i) => {
-        let scored = 0, correct = 0
+        let scored = 0,
+          correct = 0
         if (st.type === 'standard') {
           for (let qi = 0; qi < st.qCount; qi++) {
             if (fixedCA[i]?.[qi] != null && fixedUA[i]?.[qi] != null) {
@@ -682,25 +879,27 @@ export default function Simulationsrechner({ onBack }) {
           }
         } else if (st.type === 'emotionen') {
           for (let ei = 0; ei < st.qCount; ei++) {
-            const uRow = fixedUA[i]?.[ei], cRow = fixedCA[i]?.[ei]
+            const uRow = fixedUA[i]?.[ei],
+              cRow = fixedCA[i]?.[ei]
             if (!uRow || !cRow) continue
-            if (!uRow.every(v=>v!=null) || !cRow.every(v=>v!=null)) continue
+            if (!uRow.every((v) => v != null) || !cRow.every((v) => v != null)) continue
             scored++
-            if (uRow.every((v,oi)=>v===cRow[oi])) correct++
+            if (uRow.every((v, oi) => v === cRow[oi])) correct++
           }
         } else if (st.type === 'soziales') {
           for (let ei = 0; ei < st.qCount; ei++) {
-            const uRow = fixedUA[i]?.[ei], cRow = fixedCA[i]?.[ei]
+            const uRow = fixedUA[i]?.[ei],
+              cRow = fixedCA[i]?.[ei]
             if (!uRow || !cRow) continue
-            if (!uRow.every(v=>v!=null) || !cRow.every(v=>v!=null)) continue
+            if (!uRow.every((v) => v != null) || !cRow.every((v) => v != null)) continue
             scored++
             let diffSum = 0
-            for (let oi=0; oi<5; oi++) diffSum += Math.abs(uRow[oi]-cRow[oi])
-            correct += 1 - diffSum/12
+            for (let oi = 0; oi < 5; oi++) diffSum += Math.abs(uRow[oi] - cRow[oi])
+            correct += 1 - diffSum / 12
           }
         }
         const total = getScoredItems(st)
-        const pct = total > 0 ? correct/total : null
+        const pct = total > 0 ? correct / total : null
         return { ...st, scored, correct, pct, weight: weights[i] }
       })
 
@@ -708,30 +907,34 @@ export default function Simulationsrechner({ onBack }) {
       const secData = {}
       for (const b of breakdown) {
         const sec = b.section === 'BMS' && b.name === 'Textverständnis' ? 'TV' : b.section
-        if (!secData[sec]) secData[sec] = { correct:0, total:0 }
+        if (!secData[sec]) secData[sec] = { correct: 0, total: 0 }
         secData[sec].correct += b.correct
         secData[sec].total += getScoredItems(b)
       }
       let gesamt = 0
       for (const [sec, d] of Object.entries(secData)) {
-        if (d.total > 0 && sectionW[sec]) gesamt += (d.correct/d.total) * sectionW[sec]
+        if (d.total > 0 && sectionW[sec]) gesamt += (d.correct / d.total) * sectionW[sec]
       }
 
-      const rows = breakdown.filter(b => b.type!=='merken' && b.type!=='pause')
-      console.table(rows.map((b,i) => ({
-        '#': i+1,
-        Untertest: b.name,
-        Fragen: getScoredItems(b),
-        Richtig: b.type==='soziales'?b.correct.toFixed(1):b.correct,
-        Bewertet: b.scored,
-        '%': b.pct!=null?Math.round(b.pct*100)+'%':'–',
-        Gewicht: (b.weight*100).toFixed(1)+'%',
-      })))
-      console.log('Gesamtscore:', Math.round(gesamt*100)+'%')
+      const rows = breakdown.filter((b) => b.type !== 'merken' && b.type !== 'pause')
+      console.table(
+        rows.map((b, i) => ({
+          '#': i + 1,
+          Untertest: b.name,
+          Fragen: getScoredItems(b),
+          Richtig: b.type === 'soziales' ? b.correct.toFixed(1) : b.correct,
+          Bewertet: b.scored,
+          '%': b.pct != null ? Math.round(b.pct * 100) + '%' : '–',
+          Gewicht: (b.weight * 100).toFixed(1) + '%',
+        }))
+      )
+      console.log('Gesamtscore:', Math.round(gesamt * 100) + '%')
       console.log('Falls die Werte stimmen, Screenshot machen! Nach Reload sind die Daten weg.')
       return { breakdown, gesamt }
     }
-    return () => { delete window.__recoverSimulation }
+    return () => {
+      delete window.__recoverSimulation
+    }
   }, [])
 
   // Direkter Zugriff auf Rohdaten via window.__simData (für Recovery per HMR)
@@ -740,7 +943,7 @@ export default function Simulationsrechner({ onBack }) {
   }, [userAnswers, correctAnswers, subtests])
 
   useEffect(() => {
-    const h = e => {
+    const h = (e) => {
       const ph = phaseRef.current
       if (ph === 'test') {
         if (e.key === 'Escape') {
@@ -748,7 +951,10 @@ export default function Simulationsrechner({ onBack }) {
           return
         }
       } else if (ph === 'review') {
-        if (e.key === 'Escape') { onBack(); return }
+        if (e.key === 'Escape') {
+          onBack()
+          return
+        }
         if (e.key === 'ArrowRight') {
           const ri = reviewIndices(subtestsRef.current)
           const pos = ri.indexOf(currentIdxRef.current)
@@ -763,7 +969,7 @@ export default function Simulationsrechner({ onBack }) {
         }
       } else return
 
-      const oi = ['a','s','d','f','g'].indexOf(e.key.toLowerCase())
+      const oi = ['a', 's', 'd', 'f', 'g'].indexOf(e.key.toLowerCase())
       if (oi < 0) return
       const el = document.activeElement
       if (!el || !el.dataset || el.dataset.qidx === undefined) return
@@ -808,45 +1014,53 @@ export default function Simulationsrechner({ onBack }) {
 
   function exportPDF(breakdown, totalItems, totalCorrect, totalPct, gesamtScore) {
     const weights = computeWeights(subtests)
-    const rows = breakdown.filter(b => b.type !== 'merken' && b.type !== 'pause').map((b, i) => {
-      const w = b.weight * 100
-      return `<tr>
+    const rows = breakdown
+      .filter((b) => b.type !== 'merken' && b.type !== 'pause')
+      .map((b, i) => {
+        const w = b.weight * 100
+        return `<tr>
         <td style="padding:4px 8px;border:1px solid #444">${b.name}</td>
         <td style="padding:4px 8px;border:1px solid #444;text-align:center">${getScoredItems(b)}</td>
-        <td style="padding:4px 8px;border:1px solid #444;text-align:center">${b.type==='soziales'?b.correct.toFixed(1):b.correct}</td>
+        <td style="padding:4px 8px;border:1px solid #444;text-align:center">${b.type === 'soziales' ? b.correct.toFixed(1) : b.correct}</td>
         <td style="padding:4px 8px;border:1px solid #444;text-align:center">${b.scored}</td>
-        <td style="padding:4px 8px;border:1px solid #444;text-align:center">${b.pct!=null?Math.round(b.pct*100)+'%':'–'}</td>
+        <td style="padding:4px 8px;border:1px solid #444;text-align:center">${b.pct != null ? Math.round(b.pct * 100) + '%' : '–'}</td>
         <td style="padding:4px 8px;border:1px solid #444;text-align:center">${w.toFixed(1)}%</td>
       </tr>`
-    }).join('')
+      })
+      .join('')
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>MedAT Auswertung</title>
       <style>body{font-family:system-ui,sans-serif;background:#111;color:#ddd;padding:40px}
         h1{color:#fab387}table{border-collapse:collapse;width:100%}th{text-align:left;padding:6px 8px;border:1px solid #444;background:#222}
         @media print{body{background:#fff;color:#000}h1{color:#000}th{background:#eee;border-color:#ccc}td{border-color:#ccc}}
       </style></head><body>
       <h1>MedAT Simulation — Auswertung</h1>
-      <p style="color:#999">MedAT-H${includePause?' mit':' ohne'} Mittagspause · ${new Date().toLocaleDateString('de-AT')}</p>
-      ${gesamtScore!=null?`<p style="font-size:18px">Gesamtscore: <strong>${Math.round(gesamtScore*100)}%</strong></p>`:''}
-      <p>Gesamt: ${totalCorrect} von ${totalItems} Fragen richtig (${totalPct!=null?Math.round(totalPct*100)+'%':'–'})</p>
+      <p style="color:#999">MedAT-H${includePause ? ' mit' : ' ohne'} Mittagspause · ${new Date().toLocaleDateString('de-AT')}</p>
+      ${gesamtScore != null ? `<p style="font-size:18px">Gesamtscore: <strong>${Math.round(gesamtScore * 100)}%</strong></p>` : ''}
+      <p>Gesamt: ${totalCorrect} von ${totalItems} Fragen richtig (${totalPct != null ? Math.round(totalPct * 100) + '%' : '–'})</p>
       <table><thead><tr>
         <th>Untertest</th><th>Fragen</th><th>Richtig</th><th>Bewertet</th><th>% Richtig</th><th>Gewicht</th>
       </tr></thead><tbody>${rows}</tbody></table>
       <script>window.onload=function(){window.print()}</script>
       </body></html>`
     const w = window.open('', '_blank', 'width=800,height=600')
-    if (w) { w.document.write(html); w.document.close() }
+    if (w) {
+      w.document.write(html)
+      w.document.close()
+    }
   }
 
   // ── Settings ──────────────────────────────────────────────────────────────────
 
   if (phase === 'settings') {
     const sts = buildSubtests()
-    const totalMin = sts.reduce((s,st) => s + st.timeMin, 0)
+    const totalMin = sts.reduce((s, st) => s + st.timeMin, 0)
     return (
-      <div style={{ maxWidth:680, margin:'0 auto', padding:'24px 20px' }}>
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: '24px 20px' }}>
         <BackBtn onBack={onBack} />
-        <div style={{ color:T.orange, fontSize:24, fontWeight:'bold', marginBottom:8 }}>Simulationsrechner</div>
-        <div style={{ color:T.muted, fontSize:14, marginBottom:24 }}>Simulationstimer und -Auswertung für externe Simulationen</div>
+        <div style={{ color: T.orange, fontSize: 24, fontWeight: 'bold', marginBottom: 8 }}>Simulationsrechner</div>
+        <div style={{ color: T.muted, fontSize: 14, marginBottom: 24 }}>
+          Simulationstimer und -Auswertung für externe Simulationen
+        </div>
         <ResumeBanner
           session={resumableSession ? describeResumable(resumableSession) : null}
           onResume={resumeSimulation}
@@ -855,23 +1069,43 @@ export default function Simulationsrechner({ onBack }) {
           label="Laufende Simulation fortsetzen?"
         />
         <Card>
-          <div style={{ marginBottom:20 }}>
-            <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}>
-              <input type="checkbox" checked={includePause} onChange={e => setIncludePause(e.target.checked)}
-                style={{ width:18, height:18, accentColor:T.orange }} />
-              <span style={{ color:T.text, fontSize:14 }}>60 Min Mittagspause nach Textverständnis</span>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={includePause}
+                onChange={(e) => setIncludePause(e.target.checked)}
+                style={{ width: 18, height: 18, accentColor: T.orange }}
+              />
+              <span style={{ color: T.text, fontSize: 14 }}>60 Min Mittagspause nach Textverständnis</span>
             </label>
           </div>
-          <div style={{ color:T.muted, fontSize:12, marginBottom:16, lineHeight:1.6 }}>
-            <div>Ablauf: Für jeden Untertest läuft ein Timer in Original-Länge. Währenddessen kannst du deine Antworten eingeben — oder erst am Ende vom Zettel übertragen. Nach allen Untertests gibst du die Lösungsschablone ein und erhältst die Auswertung.</div>
+          <div style={{ color: T.muted, fontSize: 12, marginBottom: 16, lineHeight: 1.6 }}>
+            <div>
+              Ablauf: Für jeden Untertest läuft ein Timer in Original-Länge. Währenddessen kannst du deine Antworten
+              eingeben — oder erst am Ende vom Zettel übertragen. Nach allen Untertests gibst du die Lösungsschablone
+              ein und erhältst die Auswertung.
+            </div>
           </div>
-          <div style={{ color:T.muted, fontSize:12, marginBottom:16 }}>
-            {sts.length} Phasen · Gesamtzeit: {Math.floor(totalMin/60)}h {totalMin%60}min
+          <div style={{ color: T.muted, fontSize: 12, marginBottom: 16 }}>
+            {sts.length} Phasen · Gesamtzeit: {Math.floor(totalMin / 60)}h {totalMin % 60}min
           </div>
-          <button onClick={startSimulation}
-            style={{ background:T.orange, border:'none', borderRadius:10, color:'#000',
-              cursor:'pointer', padding:'14px 32px', fontSize:16, fontWeight:'bold', width:'100%' }}
-          >Simulation starten</button>
+          <button
+            onClick={startSimulation}
+            style={{
+              background: T.orange,
+              border: 'none',
+              borderRadius: 10,
+              color: '#000',
+              cursor: 'pointer',
+              padding: '14px 32px',
+              fontSize: 16,
+              fontWeight: 'bold',
+              width: '100%',
+            }}
+          >
+            Simulation starten
+          </button>
         </Card>
       </div>
     )
@@ -881,75 +1115,122 @@ export default function Simulationsrechner({ onBack }) {
 
   if (phase === 'test') {
     const st = subtests[currentIdx]
-    const answered = st.type==='standard' ? (userAnswers[currentIdx]?.filter(a => a != null).length ?? 0)
-      : st.type==='emotionen'||st.type==='soziales' ? (userAnswers[currentIdx]?.reduce((s,r) => s + r.filter(x => x!=null).length, 0) ?? 0)
-      : 0
+    const answered =
+      st.type === 'standard'
+        ? (userAnswers[currentIdx]?.filter((a) => a != null).length ?? 0)
+        : st.type === 'emotionen' || st.type === 'soziales'
+          ? (userAnswers[currentIdx]?.reduce((s, r) => s + r.filter((x) => x != null).length, 0) ?? 0)
+          : 0
 
     return (
-      <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 20px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
         <SubtestNav subtests={subtests} currentIdx={currentIdx} answers={userAnswers} correctAnswers={correctAnswers} />
         <ProgressBar current={currentIdx + 1} total={subtests.length} color={T.orange} />
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
           <div>
-            <div style={{ color:st.type==='pause'?T.yellow:T.orange, fontSize:20, fontWeight:'bold' }}>{st.name}</div>
-            <div style={{ color:T.muted, fontSize:13 }}>
-              {st.type==='pause' ? '60 Min Pause' : st.type==='merken' ? `${st.qCount} Ausweise · ${st.timeMin} Min merken` :
-               st.type==='emotionen' ? `${st.qCount} Beispiele · je 5 Emotionen · ${st.timeMin} Min · ${answered} beantwortet` :
-               st.type==='soziales' ? `${st.qCount} Beispiele · je 5 Überlegungen · ${st.timeMin} Min · ${answered} beantwortet` :
-               `${st.qCount} Fragen · ${st.timeMin} Min · ${answered} beantwortet`}
+            <div style={{ color: st.type === 'pause' ? T.yellow : T.orange, fontSize: 20, fontWeight: 'bold' }}>
+              {st.name}
+            </div>
+            <div style={{ color: T.muted, fontSize: 13 }}>
+              {st.type === 'pause'
+                ? '60 Min Pause'
+                : st.type === 'merken'
+                  ? `${st.qCount} Ausweise · ${st.timeMin} Min merken`
+                  : st.type === 'emotionen'
+                    ? `${st.qCount} Beispiele · je 5 Emotionen · ${st.timeMin} Min · ${answered} beantwortet`
+                    : st.type === 'soziales'
+                      ? `${st.qCount} Beispiele · je 5 Überlegungen · ${st.timeMin} Min · ${answered} beantwortet`
+                      : `${st.qCount} Fragen · ${st.timeMin} Min · ${answered} beantwortet`}
             </div>
           </div>
-          <div style={{ textAlign:'right' }}>
-            <button onClick={finishSubtest}
-              style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:8,
-                color:T.muted, cursor:'pointer', padding:'6px 16px', fontSize:13 }}
-            >{st.type==='pause'?'Pause überspringen →':'Fertig →'}</button>
+          <div style={{ textAlign: 'right' }}>
+            <button
+              onClick={finishSubtest}
+              style={{
+                background: 'none',
+                border: `1px solid ${T.border}`,
+                borderRadius: 8,
+                color: T.muted,
+                cursor: 'pointer',
+                padding: '6px 16px',
+                fontSize: 13,
+              }}
+            >
+              {st.type === 'pause' ? 'Pause überspringen →' : 'Fertig →'}
+            </button>
           </div>
         </div>
         <TimerDisplay seconds={timer} />
-        <div style={{ textAlign:'center', marginBottom:20 }}>
-          <button onClick={() => setTimerPaused(p => !p)}
-            style={{ background:timerPaused?T.orange:'none', border:`1px solid ${timerPaused?T.orange:T.border}`, borderRadius:8,
-              color:timerPaused?'#000':T.muted, cursor:'pointer', padding:'6px 20px', fontSize:13, fontWeight:timerPaused?600:400 }}
-          >{timerPaused ? '▶ Fortsetzen' : '⏸ Stop'}</button>
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+          <button
+            onClick={() => setTimerPaused((p) => !p)}
+            style={{
+              background: timerPaused ? T.orange : 'none',
+              border: `1px solid ${timerPaused ? T.orange : T.border}`,
+              borderRadius: 8,
+              color: timerPaused ? '#000' : T.muted,
+              cursor: 'pointer',
+              padding: '6px 20px',
+              fontSize: 13,
+              fontWeight: timerPaused ? 600 : 400,
+            }}
+          >
+            {timerPaused ? '▶ Fortsetzen' : '⏸ Stop'}
+          </button>
         </div>
 
         {st.type === 'pause' && (
-          <Card style={{ textAlign:'center', padding:60 }}>
-            <div style={{ fontSize:64, marginBottom:16 }}>🍽️</div>
-            <div style={{ color:T.yellow, fontSize:20, fontWeight:'bold', marginBottom:8 }}>Mittagspause</div>
-            <div style={{ color:T.muted, fontSize:14 }}>60 Minuten — Timer läuft. Danach geht es automatisch weiter.</div>
+          <Card style={{ textAlign: 'center', padding: 60 }}>
+            <div style={{ fontSize: 64, marginBottom: 16 }}>🍽️</div>
+            <div style={{ color: T.yellow, fontSize: 20, fontWeight: 'bold', marginBottom: 8 }}>Mittagspause</div>
+            <div style={{ color: T.muted, fontSize: 14 }}>
+              60 Minuten — Timer läuft. Danach geht es automatisch weiter.
+            </div>
           </Card>
         )}
 
         {st.type === 'merken' && (
-          <Card style={{ textAlign:'center', padding:60 }}>
-            <div style={{ fontSize:64, marginBottom:16 }}>🧠</div>
-            <div style={{ color:T.green, fontSize:20, fontWeight:'bold', marginBottom:8 }}>Merkphase</div>
-            <div style={{ color:T.muted, fontSize:14 }}>{st.qCount} Ausweise einprägen — {st.timeMin} Minuten Zeit.<br/>Keine Eingabe nötig. Stift und Notizen sind nicht erlaubt.</div>
+          <Card style={{ textAlign: 'center', padding: 60 }}>
+            <div style={{ fontSize: 64, marginBottom: 16 }}>🧠</div>
+            <div style={{ color: T.green, fontSize: 20, fontWeight: 'bold', marginBottom: 8 }}>Merkphase</div>
+            <div style={{ color: T.muted, fontSize: 14 }}>
+              {st.qCount} Ausweise einprägen — {st.timeMin} Minuten Zeit.
+              <br />
+              Keine Eingabe nötig. Stift und Notizen sind nicht erlaubt.
+            </div>
           </Card>
         )}
 
         {st.type === 'standard' && (
-          <Card style={{ padding:12 }}>
+          <Card style={{ padding: 12 }}>
             <StandardGrid qCount={st.qCount} answers={userAnswers[currentIdx]} onChange={setUserAnswer} mode="test" />
           </Card>
         )}
 
         {st.type === 'emotionen' && (
-          <Card style={{ padding:12 }}>
-            <EmotionenGrid qCount={st.qCount} answers={userAnswers[currentIdx]} onChange={setUserAnswerEmotionen} mode="test" />
+          <Card style={{ padding: 12 }}>
+            <EmotionenGrid
+              qCount={st.qCount}
+              answers={userAnswers[currentIdx]}
+              onChange={setUserAnswerEmotionen}
+              mode="test"
+            />
           </Card>
         )}
 
         {st.type === 'soziales' && (
-          <Card style={{ padding:12 }}>
-            <SozialesGrid qCount={st.qCount} answers={userAnswers[currentIdx]} onChange={setUserAnswerSoziales} mode="test" />
+          <Card style={{ padding: 12 }}>
+            <SozialesGrid
+              qCount={st.qCount}
+              answers={userAnswers[currentIdx]}
+              onChange={setUserAnswerSoziales}
+              mode="test"
+            />
           </Card>
         )}
 
         {(st.type === 'standard' || st.type === 'emotionen' || st.type === 'soziales') && (
-          <div style={{ color:T.muted, fontSize:11, marginTop:12, textAlign:'center' }}>
+          <div style={{ color: T.muted, fontSize: 11, marginTop: 12, textAlign: 'center' }}>
             Antwort anklicken + A/S/D/F/G zum Auswählen · Tab zum Navigieren · Esc abbrechen
           </div>
         )}
@@ -965,92 +1246,146 @@ export default function Simulationsrechner({ onBack }) {
     const { filled: userFilled, total: userTotal } = countFilled(userAnswers, subtests)
 
     return (
-      <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 20px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
         <SubtestNav subtests={subtests} currentIdx={currentIdx} answers={userAnswers} correctAnswers={correctAnswers} />
         <ProgressBar current={currentIdx + 1} total={subtests.length} color={T.orange} />
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
           <div>
-            <div style={{ color:T.orange, fontSize:20, fontWeight:'bold' }}>
-              {st.type==='merken' ? `${st.name} — keine Lösung nötig` :
-               st.type==='pause' ? `${st.name} — überspringen` :
-               `${st.name} — Lösungsschablone`}
+            <div style={{ color: T.orange, fontSize: 20, fontWeight: 'bold' }}>
+              {st.type === 'merken'
+                ? `${st.name} — keine Lösung nötig`
+                : st.type === 'pause'
+                  ? `${st.name} — überspringen`
+                  : `${st.name} — Lösungsschablone`}
             </div>
-            <div style={{ color:T.muted, fontSize:13 }}>
-              {st.type==='standard' ? `${st.qCount} Fragen · ${correctAnswers[currentIdx]?.filter(a=>a!=null).length??0} ausgefüllt` :
-               st.type==='emotionen' ? `${st.qCount} Beispiele · je 5 Emotionen` :
-               st.type==='soziales' ? `${st.qCount} Beispiele · je 5 Überlegungen` :
-               st.type==='merken' ? 'Keine Eingabe nötig' : ''}
+            <div style={{ color: T.muted, fontSize: 13 }}>
+              {st.type === 'standard'
+                ? `${st.qCount} Fragen · ${correctAnswers[currentIdx]?.filter((a) => a != null).length ?? 0} ausgefüllt`
+                : st.type === 'emotionen'
+                  ? `${st.qCount} Beispiele · je 5 Emotionen`
+                  : st.type === 'soziales'
+                    ? `${st.qCount} Beispiele · je 5 Überlegungen`
+                    : st.type === 'merken'
+                      ? 'Keine Eingabe nötig'
+                      : ''}
             </div>
           </div>
-          <div style={{ display:'flex', gap:8 }}>
-            <button disabled={currentIdx===0} onClick={()=>{
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              disabled={currentIdx === 0}
+              onClick={() => {
                 const ri = reviewIndices(subtests)
                 const pos = ri.lastIndexOf(currentIdx)
-                if (pos > 0) setCurrentIdx(ri[pos-1])
+                if (pos > 0) setCurrentIdx(ri[pos - 1])
               }}
-              style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:8,
-                color:currentIdx===0?T.border:T.muted, cursor:currentIdx===0?'default':'pointer',
-                padding:'6px 12px', fontSize:13 }}
-            >←</button>
-            <button disabled={currentIdx>=subtests.length-1} onClick={()=>{
+              style={{
+                background: 'none',
+                border: `1px solid ${T.border}`,
+                borderRadius: 8,
+                color: currentIdx === 0 ? T.border : T.muted,
+                cursor: currentIdx === 0 ? 'default' : 'pointer',
+                padding: '6px 12px',
+                fontSize: 13,
+              }}
+            >
+              ←
+            </button>
+            <button
+              disabled={currentIdx >= subtests.length - 1}
+              onClick={() => {
                 const ri = reviewIndices(subtests)
                 const pos = ri.indexOf(currentIdx)
-                if (pos >= 0 && pos < ri.length-1) setCurrentIdx(ri[pos+1])
+                if (pos >= 0 && pos < ri.length - 1) setCurrentIdx(ri[pos + 1])
               }}
-              style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:8,
-                color:currentIdx>=subtests.length-1?T.border:T.muted,
-                cursor:currentIdx>=subtests.length-1?'default':'pointer',
-                padding:'6px 12px', fontSize:13 }}
-            >→</button>
+              style={{
+                background: 'none',
+                border: `1px solid ${T.border}`,
+                borderRadius: 8,
+                color: currentIdx >= subtests.length - 1 ? T.border : T.muted,
+                cursor: currentIdx >= subtests.length - 1 ? 'default' : 'pointer',
+                padding: '6px 12px',
+                fontSize: 13,
+              }}
+            >
+              →
+            </button>
           </div>
         </div>
 
         {st.type === 'merken' && (
-          <Card style={{ textAlign:'center', padding:40 }}>
-            <div style={{ color:T.green, fontSize:16, fontWeight:'bold', marginBottom:8 }}>Merkphase</div>
-            <div style={{ color:T.muted, fontSize:13 }}>Für die Merkphase gibt es keine Antworten — die Bewertung erfolgt nur bei der Abfrage.</div>
+          <Card style={{ textAlign: 'center', padding: 40 }}>
+            <div style={{ color: T.green, fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Merkphase</div>
+            <div style={{ color: T.muted, fontSize: 13 }}>
+              Für die Merkphase gibt es keine Antworten — die Bewertung erfolgt nur bei der Abfrage.
+            </div>
           </Card>
         )}
 
         {st.type === 'pause' && (
-          <Card style={{ textAlign:'center', padding:40 }}>
-            <div style={{ color:T.yellow, fontSize:16, fontWeight:'bold' }}>Mittagspause — keine Antworten</div>
+          <Card style={{ textAlign: 'center', padding: 40 }}>
+            <div style={{ color: T.yellow, fontSize: 16, fontWeight: 'bold' }}>Mittagspause — keine Antworten</div>
           </Card>
         )}
 
         {st.type === 'standard' && (
-          <Card style={{ padding:12 }}>
-            <StandardGrid qCount={st.qCount} answers={correctAnswers[currentIdx]} onChange={setCorrectAnswer} mode="review" />
+          <Card style={{ padding: 12 }}>
+            <StandardGrid
+              qCount={st.qCount}
+              answers={correctAnswers[currentIdx]}
+              onChange={setCorrectAnswer}
+              mode="review"
+            />
           </Card>
         )}
 
         {st.type === 'emotionen' && (
-          <Card style={{ padding:12 }}>
-            <EmotionenGrid qCount={st.qCount} answers={correctAnswers[currentIdx]} onChange={setCorrectAnswerEmotionen} mode="review" />
+          <Card style={{ padding: 12 }}>
+            <EmotionenGrid
+              qCount={st.qCount}
+              answers={correctAnswers[currentIdx]}
+              onChange={setCorrectAnswerEmotionen}
+              mode="review"
+            />
           </Card>
         )}
 
         {st.type === 'soziales' && (
-          <Card style={{ padding:12 }}>
-            <SozialesGrid qCount={st.qCount} answers={correctAnswers[currentIdx]} onChange={setCorrectAnswerSoziales} mode="review" />
+          <Card style={{ padding: 12 }}>
+            <SozialesGrid
+              qCount={st.qCount}
+              answers={correctAnswers[currentIdx]}
+              onChange={setCorrectAnswerSoziales}
+              mode="review"
+            />
           </Card>
         )}
 
-        {(st.type !== 'merken' && st.type !== 'pause') && (
-          <div style={{ color:T.muted, fontSize:11, marginTop:12, textAlign:'center' }}>
+        {st.type !== 'merken' && st.type !== 'pause' && (
+          <div style={{ color: T.muted, fontSize: 11, marginTop: 12, textAlign: 'center' }}>
             Lösungsschablone eingeben · ← → zwischen Untertests · A/S/D/F/G zum Auswählen
           </div>
         )}
 
-        <div style={{ textAlign:'center', marginTop:20 }}>
-          <button onClick={() => setPhase('results')}
-            style={{ background:T.orange, border:'none', borderRadius:10,
-              color:filled===total?'#000':T.muted, cursor:'pointer',
-              padding:'14px 40px', fontSize:16, fontWeight:'bold',
-              opacity: filled===total?1:0.7 }}
-          >Auswerten</button>
-          <div style={{ color:T.yellow, fontSize:12, marginTop:8 }}>
-            Lösungen: {filled}/{total} ausgefüllt{userFilled<userTotal?` · Antworten: ${userFilled}/${userTotal}`:''}
+        <div style={{ textAlign: 'center', marginTop: 20 }}>
+          <button
+            onClick={() => setPhase('results')}
+            style={{
+              background: T.orange,
+              border: 'none',
+              borderRadius: 10,
+              color: filled === total ? '#000' : T.muted,
+              cursor: 'pointer',
+              padding: '14px 40px',
+              fontSize: 16,
+              fontWeight: 'bold',
+              opacity: filled === total ? 1 : 0.7,
+            }}
+          >
+            Auswerten
+          </button>
+          <div style={{ color: T.yellow, fontSize: 12, marginTop: 8 }}>
+            Lösungen: {filled}/{total} ausgefüllt
+            {userFilled < userTotal ? ` · Antworten: ${userFilled}/${userTotal}` : ''}
           </div>
         </div>
       </div>
@@ -1068,33 +1403,62 @@ export default function Simulationsrechner({ onBack }) {
       }
     }
     return (
-      <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 20px' }}>
-        <BackBtn onBack={() => { setPhase('settings'); setUserAnswers([]); setCorrectAnswers([]); setDetailSubtest(null); clearSimRechnerSession(); setSavedSession(null) }} />
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
+        <BackBtn
+          onBack={() => {
+            setPhase('settings')
+            setUserAnswers([])
+            setCorrectAnswers([])
+            setDetailSubtest(null)
+            clearSimRechnerSession()
+            setSavedSession(null)
+          }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
           <div>
-            <div style={{ color:T.orange, fontSize:24, fontWeight:'bold', marginBottom:4 }}>Auswertung</div>
-            <div style={{ color:T.muted, fontSize:14 }}>
-              {totalPct != null ? `${totalCorrect} von ${totalItems} Fragen richtig (${Math.round(totalPct*100)}%)` : 'Keine bewertbaren Antworten'}
-              {gesamtScore != null && <span style={{ color:T.orange, fontWeight:'bold' }}> · Gesamtscore: {Math.round(gesamtScore*100)}%</span>}
+            <div style={{ color: T.orange, fontSize: 24, fontWeight: 'bold', marginBottom: 4 }}>Auswertung</div>
+            <div style={{ color: T.muted, fontSize: 14 }}>
+              {totalPct != null
+                ? `${totalCorrect} von ${totalItems} Fragen richtig (${Math.round(totalPct * 100)}%)`
+                : 'Keine bewertbaren Antworten'}
+              {gesamtScore != null && (
+                <span style={{ color: T.orange, fontWeight: 'bold' }}>
+                  {' '}
+                  · Gesamtscore: {Math.round(gesamtScore * 100)}%
+                </span>
+              )}
             </div>
           </div>
-          <button onClick={() => exportPDF(breakdown, totalItems, totalCorrect, totalPct, gesamtScore)}
-            style={{ background:T.surf2, border:`1px solid ${T.border}`, borderRadius:8,
-              color:T.text, cursor:'pointer', padding:'8px 16px', fontSize:13, flexShrink:0 }}
-          >📄 PDF</button>
+          <button
+            onClick={() => exportPDF(breakdown, totalItems, totalCorrect, totalPct, gesamtScore)}
+            style={{
+              background: T.surf2,
+              border: `1px solid ${T.border}`,
+              borderRadius: 8,
+              color: T.text,
+              cursor: 'pointer',
+              padding: '8px 16px',
+              fontSize: 13,
+              flexShrink: 0,
+            }}
+          >
+            📄 PDF
+          </button>
         </div>
 
         <Card>
-          <div style={{ color:T.muted, fontSize:11, marginBottom:8 }}>Klick auf eine Zeile für Detailansicht</div>
-          <div style={{ display:'grid', gap:6 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:11, color:T.muted, marginBottom:4 }}>
-              <span style={{ minWidth:20, textAlign:'right', flexShrink:0 }}>#</span>
-              <span style={{ flex:1 }}>Untertest</span>
-              <span style={{ width:40, textAlign:'center', flexShrink:0 }}>Fragen</span>
-              <span style={{ width:42, textAlign:'center', flexShrink:0 }}>Richtig</span>
-              <span style={{ width:38, textAlign:'center', flexShrink:0 }}>%</span>
-              <span style={{ width:46, textAlign:'center', flexShrink:0 }}>Gewicht</span>
-              <span style={{ width:70, flexShrink:0 }}></span>
+          <div style={{ color: T.muted, fontSize: 11, marginBottom: 8 }}>Klick auf eine Zeile für Detailansicht</div>
+          <div style={{ display: 'grid', gap: 6 }}>
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: T.muted, marginBottom: 4 }}
+            >
+              <span style={{ minWidth: 20, textAlign: 'right', flexShrink: 0 }}>#</span>
+              <span style={{ flex: 1 }}>Untertest</span>
+              <span style={{ width: 40, textAlign: 'center', flexShrink: 0 }}>Fragen</span>
+              <span style={{ width: 42, textAlign: 'center', flexShrink: 0 }}>Richtig</span>
+              <span style={{ width: 38, textAlign: 'center', flexShrink: 0 }}>%</span>
+              <span style={{ width: 46, textAlign: 'center', flexShrink: 0 }}>Gewicht</span>
+              <span style={{ width: 70, flexShrink: 0 }}></span>
             </div>
             {scoringWithIdx.map((b, i) => {
               const idx = b.subtestIdx
@@ -1102,44 +1466,108 @@ export default function Simulationsrechner({ onBack }) {
               const isExpanded = detailSubtest === idx
               return (
                 <div key={idx}>
-                  <div onClick={() => setDetailSubtest(isExpanded ? null : idx)}
-                    style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, cursor:'pointer',
-                      background:isExpanded?T.surf2:'transparent', borderRadius:6, padding:'4px 6px', transition:'background 0.1s' }}>
-                    <span style={{ color:T.muted, minWidth:20, textAlign:'right', flexShrink:0 }}>{isExpanded ? '▾' : '▸'} {i+1}.</span>
-                    <span style={{ color:T.text, flex:1 }}>{b.name}</span>
-                    <span style={{ color:T.muted, width:40, textAlign:'center', flexShrink:0 }}>{getScoredItems(b)}</span>
-                    <span style={{ color:b.pct!=null?(b.pct>=0.7?T.green:b.pct>=0.4?T.yellow:T.red):T.muted, fontWeight:700, width:42, textAlign:'center', flexShrink:0 }}>
-                      {b.type==='soziales'?b.correct.toFixed(1):b.correct}
+                  <div
+                    onClick={() => setDetailSubtest(isExpanded ? null : idx)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      background: isExpanded ? T.surf2 : 'transparent',
+                      borderRadius: 6,
+                      padding: '4px 6px',
+                      transition: 'background 0.1s',
+                    }}
+                  >
+                    <span style={{ color: T.muted, minWidth: 20, textAlign: 'right', flexShrink: 0 }}>
+                      {isExpanded ? '▾' : '▸'} {i + 1}.
                     </span>
-                    <span style={{ color:b.pct!=null?(b.pct>=0.7?T.green:b.pct>=0.4?T.yellow:T.red):T.muted, fontWeight:700, width:38, textAlign:'center', flexShrink:0 }}>
-                      {b.pct!=null?`${Math.round(b.pct*100)}%`:'–'}
+                    <span style={{ color: T.text, flex: 1 }}>{b.name}</span>
+                    <span style={{ color: T.muted, width: 40, textAlign: 'center', flexShrink: 0 }}>
+                      {getScoredItems(b)}
                     </span>
-                    <span style={{ color:T.muted, width:46, textAlign:'center', flexShrink:0, fontSize:11 }}>
-                      {b.weight>0?`${(b.weight*100).toFixed(1)}%`:'–'}
+                    <span
+                      style={{
+                        color: b.pct != null ? (b.pct >= 0.7 ? T.green : b.pct >= 0.4 ? T.yellow : T.red) : T.muted,
+                        fontWeight: 700,
+                        width: 42,
+                        textAlign: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {b.type === 'soziales' ? b.correct.toFixed(1) : b.correct}
                     </span>
-                    <div style={{ width:70, height:6, background:T.surf2, borderRadius:3, flexShrink:0 }}>
-                      <div style={{ width:`${b.pct!=null?b.pct*100:0}%`, height:'100%',
-                        background:b.pct!=null&&b.pct>=0.7?T.green:b.pct!=null&&b.pct>=0.4?T.yellow:T.red,
-                        borderRadius:3, transition:'width 0.5s' }} />
+                    <span
+                      style={{
+                        color: b.pct != null ? (b.pct >= 0.7 ? T.green : b.pct >= 0.4 ? T.yellow : T.red) : T.muted,
+                        fontWeight: 700,
+                        width: 38,
+                        textAlign: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {b.pct != null ? `${Math.round(b.pct * 100)}%` : '–'}
+                    </span>
+                    <span style={{ color: T.muted, width: 46, textAlign: 'center', flexShrink: 0, fontSize: 11 }}>
+                      {b.weight > 0 ? `${(b.weight * 100).toFixed(1)}%` : '–'}
+                    </span>
+                    <div style={{ width: 70, height: 6, background: T.surf2, borderRadius: 3, flexShrink: 0 }}>
+                      <div
+                        style={{
+                          width: `${b.pct != null ? b.pct * 100 : 0}%`,
+                          height: '100%',
+                          background:
+                            b.pct != null && b.pct >= 0.7 ? T.green : b.pct != null && b.pct >= 0.4 ? T.yellow : T.red,
+                          borderRadius: 3,
+                          transition: 'width 0.5s',
+                        }}
+                      />
                     </div>
                   </div>
                   {isExpanded && (
-                    <div style={{ marginLeft:28, marginBottom:8, marginTop:4, padding:12,
-                      background:T.surf2, borderRadius:8, border:`1px solid ${T.border}` }}>
-                      <div style={{ color:T.muted, fontSize:11, marginBottom:8 }}>
+                    <div
+                      style={{
+                        marginLeft: 28,
+                        marginBottom: 8,
+                        marginTop: 4,
+                        padding: 12,
+                        background: T.surf2,
+                        borderRadius: 8,
+                        border: `1px solid ${T.border}`,
+                      }}
+                    >
+                      <div style={{ color: T.muted, fontSize: 11, marginBottom: 8 }}>
                         Deine Antworten vs. Lösungsschablone
-                        {st.type === 'standard' ? ' — Grün = richtige Antwort, Rot = falsche Antwort'
-                         : st.type === 'emotionen' ? ' — Zeile komplett richtig = 1 Punkt'
-                         : ' — Je geringer die Abweichung, desto mehr Punkte'}
+                        {st.type === 'standard'
+                          ? ' — Grün = richtige Antwort, Rot = falsche Antwort'
+                          : st.type === 'emotionen'
+                            ? ' — Zeile komplett richtig = 1 Punkt'
+                            : ' — Je geringer die Abweichung, desto mehr Punkte'}
                       </div>
                       {st.type === 'standard' && (
-                        <StandardGrid qCount={st.qCount} answers={userAnswers[idx]} correctAnswers={correctAnswers[idx]} mode="results" />
+                        <StandardGrid
+                          qCount={st.qCount}
+                          answers={userAnswers[idx]}
+                          correctAnswers={correctAnswers[idx]}
+                          mode="results"
+                        />
                       )}
                       {st.type === 'emotionen' && (
-                        <EmotionenGrid qCount={st.qCount} answers={userAnswers[idx]} correctAnswers={correctAnswers[idx]} mode="results" />
+                        <EmotionenGrid
+                          qCount={st.qCount}
+                          answers={userAnswers[idx]}
+                          correctAnswers={correctAnswers[idx]}
+                          mode="results"
+                        />
                       )}
                       {st.type === 'soziales' && (
-                        <SozialesGrid qCount={st.qCount} answers={userAnswers[idx]} correctAnswers={correctAnswers[idx]} mode="results" />
+                        <SozialesGrid
+                          qCount={st.qCount}
+                          answers={userAnswers[idx]}
+                          correctAnswers={correctAnswers[idx]}
+                          mode="results"
+                        />
                       )}
                     </div>
                   )}
@@ -1148,28 +1576,58 @@ export default function Simulationsrechner({ onBack }) {
             })}
           </div>
           {gesamtScore != null && (
-            <div style={{ marginTop:16, paddingTop:16, borderTop:`1px solid ${T.border}`, textAlign:'center' }}>
-              <div style={{ color:T.muted, fontSize:12, marginBottom:4 }}>Gewichteter Gesamtscore</div>
-              <div style={{ color:T.orange, fontSize:32, fontWeight:'bold' }}>{Math.round(gesamtScore*100)}%</div>
-              <div style={{ color:T.muted, fontSize:11, marginTop:4 }}>Basierend auf den offiziellen MedAT-Sektionsgewichten</div>
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${T.border}`, textAlign: 'center' }}>
+              <div style={{ color: T.muted, fontSize: 12, marginBottom: 4 }}>Gewichteter Gesamtscore</div>
+              <div style={{ color: T.orange, fontSize: 32, fontWeight: 'bold' }}>{Math.round(gesamtScore * 100)}%</div>
+              <div style={{ color: T.muted, fontSize: 11, marginTop: 4 }}>
+                Basierend auf den offiziellen MedAT-Sektionsgewichten
+              </div>
             </div>
           )}
         </Card>
 
-        <div style={{ display:'flex', gap:12, marginTop:20, justifyContent:'center' }}>
-          <button onClick={() => {
+        <div style={{ display: 'flex', gap: 12, marginTop: 20, justifyContent: 'center' }}>
+          <button
+            onClick={() => {
               const ri = reviewIndices(subtests)
               setPhase('review')
               setCurrentIdx(ri[0] ?? 0)
               setDetailSubtest(null)
             }}
-            style={{ background:T.surf2, border:`1px solid ${T.border}`, borderRadius:10,
-              color:T.text, cursor:'pointer', padding:'12px 24px', fontSize:14 }}
-          >← Lösung korrigieren</button>
-          <button onClick={() => { setPhase('settings'); setUserAnswers([]); setCorrectAnswers([]); setDetailSubtest(null); clearSimRechnerSession(); setSavedSession(null) }}
-            style={{ background:T.orange, border:'none', borderRadius:10, color:'#000',
-              cursor:'pointer', padding:'12px 24px', fontSize:14, fontWeight:'bold' }}
-          >Neue Simulation</button>
+            style={{
+              background: T.surf2,
+              border: `1px solid ${T.border}`,
+              borderRadius: 10,
+              color: T.text,
+              cursor: 'pointer',
+              padding: '12px 24px',
+              fontSize: 14,
+            }}
+          >
+            ← Lösung korrigieren
+          </button>
+          <button
+            onClick={() => {
+              setPhase('settings')
+              setUserAnswers([])
+              setCorrectAnswers([])
+              setDetailSubtest(null)
+              clearSimRechnerSession()
+              setSavedSession(null)
+            }}
+            style={{
+              background: T.orange,
+              border: 'none',
+              borderRadius: 10,
+              color: '#000',
+              cursor: 'pointer',
+              padding: '12px 24px',
+              fontSize: 14,
+              fontWeight: 'bold',
+            }}
+          >
+            Neue Simulation
+          </button>
         </div>
       </div>
     )
