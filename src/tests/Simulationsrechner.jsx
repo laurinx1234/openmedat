@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, ProgressBar, useTimer, OPTS } from '../components/Shared.jsx'
+import { Card, BackBtn, ProgressBar, useTimer, OPTS, ResumeBanner } from '../components/Shared.jsx'
 
 // ─── Subtest definitions ────────────────────────────────────────────────────────
 // type: 'standard' = A-E choice | 'merken' = timer only | 'emotionen' = 5× binary | 'soziales' = 5× ranking
@@ -273,12 +273,42 @@ function SubtestNav({ subtests, currentIdx, answers, correctAnswers }) {
 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
+const SIMRECHNER_STORAGE_KEY = 'openmedat_simrechner_session'
+
+function loadSimRechnerSession() {
+  try {
+    const raw = localStorage.getItem(SIMRECHNER_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch (e) {
+    return null
+  }
+}
+
+function saveSimRechnerSession(data) {
+  try {
+    if (data) {
+      localStorage.setItem(SIMRECHNER_STORAGE_KEY, JSON.stringify(data))
+    } else {
+      localStorage.removeItem(SIMRECHNER_STORAGE_KEY)
+    }
+  } catch (e) { /* localStorage unavailable */ }
+}
+
+function clearSimRechnerSession() {
+  saveSimRechnerSession(null)
+}
+
 export default function Simulationsrechner({ onBack }) {
+  const [savedSession, setSavedSession] = useState(() => loadSimRechnerSession())
+  const isRecent = savedSession && (Date.now() - (savedSession.savedAt || 0) < 24 * 3600 * 1000)
+  const resumableSession = isRecent && savedSession.phase && savedSession.phase !== 'settings' ? savedSession : null
+
   const [phase, setPhase] = useState('settings')
-  const [includePause, setIncludePause] = useState(true)
+  const [includePause, setIncludePause] = useState(() => savedSession ? (savedSession.includePause ?? true) : true)
   const [currentIdx, setCurrentIdx] = useState(0)
   const [timerPaused, setTimerPaused] = useState(false)
-  const [timer, resetTimer] = useTimer(0, timerPaused)
+
+  const [timer, resetTimer] = useTimer(0, false)
   const [userAnswers, setUserAnswers] = useState([])
   const [correctAnswers, setCorrectAnswers] = useState([])
   const [detailSubtest, setDetailSubtest] = useState(null)
@@ -309,14 +339,94 @@ export default function Simulationsrechner({ onBack }) {
 
   function startSimulation() {
     const sts = buildSubtests()
-    setUserAnswers(initAnswers(sts))
-    setCorrectAnswers(initAnswers(sts))
+    const initU = initAnswers(sts)
+    const initC = initAnswers(sts)
+    setUserAnswers(initU)
+    setCorrectAnswers(initC)
     setCurrentIdx(0)
     setTimerPaused(false)
     resetTimer(sts[0].timeMin * 60)
     setPhase('test')
     setDetailSubtest(null)
+    setSavedSession(null)
+    saveSimRechnerSession({
+      phase: 'test',
+      includePause,
+      currentIdx: 0,
+      timerPaused: false,
+      timerEnd: Date.now() + sts[0].timeMin * 60 * 1000,
+      remainingSecs: sts[0].timeMin * 60,
+      userAnswers: initU,
+      correctAnswers: initC,
+      savedAt: Date.now(),
+    })
   }
+
+  function resumeSimulation() {
+    const s = savedSession || loadSimRechnerSession()
+    if (!s) return
+    setIncludePause(s.includePause ?? true)
+    setUserAnswers(s.userAnswers ?? [])
+    setCorrectAnswers(s.correctAnswers ?? [])
+    setCurrentIdx(s.currentIdx ?? 0)
+    setTimerPaused(s.timerPaused ?? false)
+    if (s.phase === 'test') {
+      const rem = s.timerPaused
+        ? (s.remainingSecs ?? 0)
+        : s.timerEnd
+          ? Math.max(0, Math.ceil((s.timerEnd - Date.now()) / 1000))
+          : 0
+      resetTimer(rem)
+    }
+    setPhase(s.phase)
+    setSavedSession(null)
+  }
+
+  function discardSimulation() {
+    clearSimRechnerSession()
+    setSavedSession(null)
+  }
+
+  function describeResumable(s) {
+    if (!s) return null
+    const total = (s.userAnswers?.length || 0)
+    let filled = 0
+    for (const row of s.userAnswers || []) {
+      if (!row) continue
+      if (Array.isArray(row)) {
+        for (const r of row) {
+          if (r == null) continue
+          if (Array.isArray(r)) { if (r.every(v => v != null)) filled++ }
+          else filled++
+        }
+      } else filled++
+    }
+    const phaseMap = { test: 'Test läuft', review: 'Lösungen eingeben', results: 'Ergebnisse' }
+    const where = phaseMap[s.phase] || s.phase
+    const part = s.phase === 'test'
+      ? `Untertest ${(s.currentIdx ?? 0) + 1} · ${filled} Antworten`
+      : s.phase === 'review'
+        ? `Lösungsschablone · ${filled} ausgefüllt`
+        : 'Auswertung bereit'
+    return { detail: `${where} · ${part}` }
+  }
+
+  // Auto-save session on changes (when not in settings)
+  useEffect(() => {
+    if (phase === 'settings') return
+    const timerEnd = timerPaused ? null : Date.now() + timer * 1000
+    saveSimRechnerSession({
+      phase,
+      includePause,
+      currentIdx,
+      timerPaused,
+      timerEnd,
+      remainingSecs: timer,
+      userAnswers,
+      correctAnswers,
+      savedAt: Date.now(),
+    })
+  }, [phase, includePause, currentIdx, timerPaused, userAnswers, correctAnswers])
 
   // Find reviewable (scorable) subtests: skip merken and pause
   function reviewIndices(sts) {
@@ -737,6 +847,13 @@ export default function Simulationsrechner({ onBack }) {
         <BackBtn onBack={onBack} />
         <div style={{ color:T.orange, fontSize:24, fontWeight:'bold', marginBottom:8 }}>Simulationsrechner</div>
         <div style={{ color:T.muted, fontSize:14, marginBottom:24 }}>Simulationstimer und -Auswertung für externe Simulationen</div>
+        <ResumeBanner
+          session={resumableSession ? describeResumable(resumableSession) : null}
+          onResume={resumeSimulation}
+          onDiscard={discardSimulation}
+          color={T.orange}
+          label="Laufende Simulation fortsetzen?"
+        />
         <Card>
           <div style={{ marginBottom:20 }}>
             <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}>
@@ -952,7 +1069,7 @@ export default function Simulationsrechner({ onBack }) {
     }
     return (
       <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 20px' }}>
-        <BackBtn onBack={() => { setPhase('settings'); setUserAnswers([]); setCorrectAnswers([]); setDetailSubtest(null) }} />
+        <BackBtn onBack={() => { setPhase('settings'); setUserAnswers([]); setCorrectAnswers([]); setDetailSubtest(null); clearSimRechnerSession(); setSavedSession(null) }} />
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
           <div>
             <div style={{ color:T.orange, fontSize:24, fontWeight:'bold', marginBottom:4 }}>Auswertung</div>
@@ -1049,7 +1166,7 @@ export default function Simulationsrechner({ onBack }) {
             style={{ background:T.surf2, border:`1px solid ${T.border}`, borderRadius:10,
               color:T.text, cursor:'pointer', padding:'12px 24px', fontSize:14 }}
           >← Lösung korrigieren</button>
-          <button onClick={() => { setPhase('settings'); setUserAnswers([]); setCorrectAnswers([]); setDetailSubtest(null) }}
+          <button onClick={() => { setPhase('settings'); setUserAnswers([]); setCorrectAnswers([]); setDetailSubtest(null); clearSimRechnerSession(); setSavedSession(null) }}
             style={{ background:T.orange, border:'none', borderRadius:10, color:'#000',
               cursor:'pointer', padding:'12px 24px', fontSize:14, fontWeight:'bold' }}
           >Neue Simulation</button>

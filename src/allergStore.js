@@ -1,21 +1,43 @@
-// Global in-memory store for pending Allergieausweise quiz session.
-// Persists across React navigations (same page load), resets on refresh.
-const store = {
-  session: null,
-  // session = { shownCards, allCards, qCount, quizReadyAt, learnEndedAt }
+// Persistent store for pending Allergieausweise quiz session.
+// Persists across React navigations and page reloads via localStorage.
+const STORAGE_KEY = 'openmedat_allerg_session'
+
+export function setSession(session) {
+  try {
+    if (session) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+    } else {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+  } catch (e) {
+    /* localStorage unavailable */
+  }
 }
 
-export function setSession(session) { store.session = session }
-export function getSession()        { return store.session }
-export function clearSession()      { store.session = null }
+export function getSession() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch (e) {
+    return null
+  }
+}
+
+export function clearSession() {
+  setSession(null)
+}
 
 export function isQuizReady() {
-  if (!store.session) return false
-  return Date.now() >= store.session.quizReadyAt
+  const session = getSession()
+  if (!session) return false
+  if (session.status === 'quiz') return true
+  return session.quizReadyAt ? Date.now() >= session.quizReadyAt : false
 }
 
 export function minutesUntilQuiz() {
-  if (!store.session) return null
-  const ms = store.session.quizReadyAt - Date.now()
+  const session = getSession()
+  if (!session || !session.quizReadyAt) return null
+  const ms = session.quizReadyAt - Date.now()
   return ms <= 0 ? 0 : Math.ceil(ms / 60000)
 }
+

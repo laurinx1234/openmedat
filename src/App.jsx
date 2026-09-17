@@ -42,7 +42,7 @@ function QuizBadge() {
     return () => clearInterval(id)
   }, [])
   const session = getSession()
-  if (!session) { beeped.current = false; return null }
+  if (!session || session.status === 'learn') { beeped.current = false; return null }
   const ready = isQuizReady()
   if (ready && !beeped.current) { playBeep(); beeped.current = true
     if('Notification' in window&&Notification.permission==='granted'){new Notification('Bereit zur Abfrage',{body:'Die Wartezeit ist abgelaufen. Du kannst jetzt die Fragen beantworten.'})}
@@ -217,6 +217,7 @@ export default function App() {
           <div style={{ marginTop:8 }}><a href="https://github.com/laurinx1234/openmedat" target="_blank" rel="noreferrer" style={{ color:T.muted, textDecoration:'none' }}>github.com/laurinx1234/openmedat</a></div>
           <div style={{ marginTop:16, paddingTop:16, borderTop:`1px solid ${T.border}`, fontSize:12, color:T.muted, maxWidth:600, margin:'16px auto 0', lineHeight:1.6 }}>
             openMedAT ist ein inoffizielles Hobbyprojekt und steht in keiner Verbindung zur Medizinischen Universität, dem MedAT oder dessen Veranstaltern. Alle Inhalte dienen ausschließlich der privaten Übung. Irrtümer und Fehler vorbehalten.
+            <div style={{ marginTop:8 }}>Bei Beschwerden oder rechtlichen Anliegen: <a href="mailto:laurinpublic@gmail.com" style={{ color:T.muted }}>laurinpublic@gmail.com</a></div>
           </div>
         </div>
         {showOnboarding && (

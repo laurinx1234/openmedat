@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { T } from '../theme.js'
-import { REDDIT_DM } from '../data/links.js'
+import { REDDIT_DM, CONTACT_EMAIL } from '../data/links.js'
 
 export default function Feedback() {
   const [open, setOpen] = useState(false)
@@ -11,6 +11,15 @@ export default function Feedback() {
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
   }, [open])
+
+  const linkStyle = {
+    display: 'inline-block',
+    background: T.blue, color: T.bg,
+    borderRadius: 8, padding: '12px 24px',
+    fontSize: 14, fontWeight: 'bold',
+    textDecoration: 'none',
+    transition: 'opacity 0.2s',
+  }
 
   return (
     <>
@@ -44,31 +53,34 @@ export default function Feedback() {
         >
           <div style={{
             background: T.surf, border: `1px solid ${T.border}`,
-            borderRadius: 16, padding: 32, maxWidth: 420, width: '100%',
+            borderRadius: 16, padding: 32, maxWidth: 440, width: '100%',
             color: T.text, textAlign: 'center',
           }}>
             <div style={{ fontSize: 28, marginBottom: 12 }}>💬</div>
             <h2 style={{ color: T.text, margin: '0 0 8px', fontSize: 20 }}>Feedback willkommen!</h2>
             <p style={{ color: T.muted, fontSize: 14, lineHeight: 1.6, margin: '0 0 24px' }}>
-              Bugs gefunden? Ideen für neue Features? Schreib mir eine Reddit-DM.
+              Bugs gefunden? Ideen für neue Features? Erreichst du mich am besten über Reddit-DM oder per E-Mail.
             </p>
-            <a
-              href={REDDIT_DM}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                display: 'inline-block',
-                background: T.blue, color: T.bg,
-                borderRadius: 8, padding: '12px 28px',
-                fontSize: 15, fontWeight: 'bold',
-                textDecoration: 'none',
-                transition: 'opacity 0.2s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.opacity = '0.85' }}
-              onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
-            >
-              Reddit DM öffnen ↗
-            </a>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <a
+                href={REDDIT_DM}
+                target="_blank"
+                rel="noreferrer"
+                style={linkStyle}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '0.85' }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+              >
+                Reddit DM öffnen ↗
+              </a>
+              <a
+                href={`mailto:${CONTACT_EMAIL}`}
+                style={{ ...linkStyle, background: T.surf2, color: T.text, border: `1px solid ${T.border}` }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '0.85' }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+              >
+                ✉ E-Mail schreiben
+              </a>
+            </div>
             <div style={{ marginTop: 16 }}>
               <button
                 onClick={() => setOpen(false)}

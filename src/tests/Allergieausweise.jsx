@@ -220,20 +220,25 @@ export function makeQuestion(shown,all){
   return{question:`Welche Blutgruppe hat ${card.name}?`,opts:[...sh,'keine'],correctIdx:sh.indexOf(correct),card,showAvatar:false}
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
 export default function Allergieausweise({onBack}){
+  const sInit = getSession()
   const[phase,setPhase]=useState(()=>{
-    // If there's a pending quiz session, check if it's ready
-    const s=getSession()
-    if(s&&isQuizReady())return'quiz_pending'
-    return'settings'
+    if(!sInit)return'settings'
+    if(sInit.status==='learn'){
+      // Merkphase is not persisted — drop sessions written by older versions.
+      clearSession()
+      return'settings'
+    }
+    if(sInit.status==='quiz'&&sInit.questions?.length)return'quiz'
+    if(isQuizReady())return'quiz_pending'
+    return'learn_done'
   })
-  const[settings,setSettings]=useState({cardCount:8,learnMin:8,quizDelayMin:35,qCount:25})
-  const[allCards,setAllCards]=useState([])
-  const[shownCards,setShownCards]=useState([])
+  const[settings,setSettings]=useState(()=>sInit?.settings||{cardCount:8,learnMin:8,quizDelayMin:35,qCount:25})
+  const[allCards,setAllCards]=useState(()=>sInit?.allCards||[])
+  const[shownCards,setShownCards]=useState(()=>sInit?.shownCards||[])
   const[learnTimer,resetLearn]=useTimer(0)
-  const[questions,setQuestions]=useState([])
-  const[answers,setAnswers]=useState([])
+  const[questions,setQuestions]=useState(()=>sInit?.questions||[])
+  const[answers,setAnswers]=useState(()=>sInit?.answers||[])
   const[done,setDone]=useState(false)
 
   // Preselect learnMin when cardCount changes (still manually adjustable)
@@ -244,13 +249,29 @@ export default function Allergieausweise({onBack}){
     if(phase==='quiz_pending'){
       const s=getSession()
       if(s){
-        setShownCards(s.shownCards);setAllCards(s.allCards)
-        const qs=Array.from({length:s.qCount},()=>makeQuestion(s.shownCards,s.allCards))
-        setQuestions(qs);setAnswers(Array(qs.length).fill(null));setDone(false)
+        setShownCards(s.shownCards||[])
+        setAllCards(s.allCards||[])
+        if(s.settings)setSettings(s.settings)
+        if(s.questions&&s.questions.length){
+          setQuestions(s.questions)
+          setAnswers(s.answers||Array(s.questions.length).fill(null))
+        }else{
+          const qs=Array.from({length:s.qCount||settings.qCount},()=>makeQuestion(s.shownCards,s.allCards))
+          const initialAns=Array(qs.length).fill(null)
+          setQuestions(qs)
+          setAnswers(initialAns)
+          setSession({
+            ...s,
+            status:'quiz',
+            questions:qs,
+            answers:initialAns,
+          })
+        }
+        setDone(false)
         setPhase('quiz')
       }
     }
-  },[])
+  },[phase,settings.qCount])
 
   async function startLearn(){
     if('Notification' in window&&Notification.permission==='default'){Notification.requestPermission()}
@@ -265,50 +286,90 @@ export default function Allergieausweise({onBack}){
     setPhase('learn')
   }
 
-  // When learn timer ends: store session, go back to home
-  useEffect(()=>{
-    if(phase!=='learn'||learnTimer>0)return
-    // Store session for later quiz
+  const finishLearn=useCallback(()=>{
     setSession({
+      status:'waiting',
       shownCards,
       allCards,
+      settings,
       qCount:settings.qCount,
+      quizDelayMin:settings.quizDelayMin,
       quizReadyAt:Date.now()+settings.quizDelayMin*60*1000,
     })
     setPhase('learn_done')
-  },[learnTimer,phase])
+  },[shownCards,allCards,settings])
 
-  // Keyboard: Escape in learn phase goes back early (cancels session)
+  // When learn timer ends: store session, go back to home
+  useEffect(()=>{
+    if(phase!=='learn'||learnTimer>0)return
+    finishLearn()
+  },[learnTimer,phase,finishLearn])
+
+  // Keyboard: Escape in learn phase goes back early (finishes learn phase)
   useEffect(()=>{
     if(phase!=='learn')return
     const h=e=>{
       if(e.key==='Escape'){
-        setSession({shownCards,allCards,qCount:settings.qCount,quizReadyAt:Date.now()+settings.quizDelayMin*60*1000})
-        setPhase('learn_done')
+        finishLearn()
       }
     }
     window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h)
-  },[phase,shownCards,allCards,settings])
+  },[phase,finishLearn])
 
   function startQuiz(){
     const qs=Array.from({length:settings.qCount},()=>makeQuestion(shownCards,allCards))
-    setQuestions(qs);setAnswers(Array(qs.length).fill(null));setDone(false)
+    const initialAns=Array(qs.length).fill(null)
+    setQuestions(qs);setAnswers(initialAns);setDone(false)
+    setSession({
+      status:'quiz',
+      shownCards,
+      allCards,
+      settings,
+      qCount:settings.qCount,
+      quizDelayMin:settings.quizDelayMin,
+      questions:qs,
+      answers:initialAns,
+      quizReadyAt:Date.now(),
+    })
     setPhase('quiz')
   }
 
   function startQuizFromStore(){
     const s=getSession()
     if(!s)return
-    setShownCards(s.shownCards);setAllCards(s.allCards)
-    const qs=Array.from({length:s.qCount},()=>makeQuestion(s.shownCards,s.allCards))
-    setQuestions(qs);setAnswers(Array(qs.length).fill(null));setDone(false)
+    setShownCards(s.shownCards||[])
+    setAllCards(s.allCards||[])
+    if(s.settings)setSettings(s.settings)
+    if(s.questions&&s.questions.length){
+      setQuestions(s.questions)
+      setAnswers(s.answers||Array(s.questions.length).fill(null))
+    }else{
+      const qs=Array.from({length:s.qCount||settings.qCount},()=>makeQuestion(s.shownCards,s.allCards))
+      const initialAns=Array(qs.length).fill(null)
+      setQuestions(qs);setAnswers(initialAns)
+      setSession({
+        ...s,
+        status:'quiz',
+        questions:qs,
+        answers:initialAns,
+      })
+    }
+    setDone(false)
     setPhase('quiz')
   }
 
   const answer=useCallback((qi,i)=>{
     if(done)return
-    const next=[...answers];next[qi]=next[qi]===i?null:i;setAnswers(next)
-  },[done,answers])
+    setAnswers(prev=>{
+      const next=[...prev]
+      next[qi]=next[qi]===i?null:i
+      const s=getSession()
+      if(s&&s.status==='quiz'){
+        setSession({...s,answers:next})
+      }
+      return next
+    })
+  },[done])
 
   // Settings keyboard
   const skGroupDefs=[
@@ -418,10 +479,10 @@ export default function Allergieausweise({onBack}){
             <div style={{color:T.text,fontSize:15,marginBottom:8}}>Du hast noch Zeit. Mach andere Übungen und komm zurück!</div>
             <div style={{color:T.muted,fontSize:13,marginBottom:32}}>Quiz wird nach {settings.quizDelayMin} Minuten Abfragezeit freigeschaltet.</div>
             <button onClick={()=>navigate('/')} style={{background:T.surf2,border:`1px solid ${T.border}`,borderRadius:12,color:T.text,cursor:'pointer',padding:'14px 32px',fontSize:16,marginBottom:12,display:'block',width:'100%'}}>← Andere Übungen machen</button>
-            {isQuizReady()&&<button onClick={startQuiz} style={{background:T.green,border:'none',borderRadius:12,color:'#000',cursor:'pointer',padding:'14px 32px',fontSize:16,fontWeight:'bold',display:'block',width:'100%'}}>Quiz starten</button>}
+            <button onClick={startQuiz} style={{background:T.green,border:'none',borderRadius:12,color:'#000',cursor:'pointer',padding:'14px 32px',fontSize:16,fontWeight:'bold',display:'block',width:'100%'}}>Quiz vorzeitig starten</button>
           </>
         )}
-        <useQuizReadyCheck onReady={()=>setPhase('learn_done')}/>
+        <QuizReadyCheck onReady={()=>setPhase('learn_done')}/>
       </div>
     )
   }
@@ -480,7 +541,7 @@ export default function Allergieausweise({onBack}){
   return(
     <div style={{maxWidth:720,margin:'0 auto',padding:'24px 20px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-        <button onClick={()=>{clearSession();setPhase('settings')}} style={{background:'none',border:`1px solid ${T.border}`,borderRadius:8,color:T.muted,cursor:'pointer',padding:'6px 14px',fontSize:13}}>← Zurück</button>
+        <button onClick={()=>setPhase('settings')} style={{background:'none',border:`1px solid ${T.border}`,borderRadius:8,color:T.muted,cursor:'pointer',padding:'6px 14px',fontSize:13}}>← Zurück</button>
         <div style={{color:T.green,fontSize:20,fontWeight:'bold'}}>Abfrage</div>
         <button onClick={()=>setDone(true)} style={{background:T.green,border:'none',borderRadius:8,color:'#000',cursor:'pointer',padding:'8px 16px',fontSize:13,fontWeight:'bold'}}>Ergebnis ({answeredCount}/{questions.length})</button>
       </div>
@@ -495,15 +556,18 @@ export default function Allergieausweise({onBack}){
 }
 
 // Helper: polls every 10s to re-render learn_done when quiz becomes ready
-function useQuizReadyCheck({onReady}){
+function QuizReadyCheck({onReady}){
   const beeped=useRef(false)
+  const onReadyRef=useRef(onReady)
+  onReadyRef.current=onReady
+
   useEffect(()=>{
     const id=setInterval(()=>{
       if(isQuizReady()){
         if(!beeped.current){playBeep();beeped.current=true
           if('Notification' in window&&Notification.permission==='granted'){new Notification('Bereit zur Abfrage',{body:'Die Wartezeit ist abgelaufen. Du kannst jetzt die Fragen beantworten.'})}
         }
-        onReady()
+        onReadyRef.current?.()
       }
     },10000)
     return()=>clearInterval(id)

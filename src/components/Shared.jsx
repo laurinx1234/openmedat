@@ -46,6 +46,32 @@ export function BackBtn({ onBack }) {
   )
 }
 
+export function ResumeBanner({ session, onResume, onDiscard, color = T.blue, label }) {
+  if (!session) return null
+  return (
+    <div style={{
+      background: `${color}15`, border: `1px solid ${color}`, borderRadius: 12,
+      padding: '16px 20px', marginBottom: 20,
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+    }}>
+      <div style={{ flex: 1, minWidth: 200 }}>
+        <div style={{ color, fontWeight: 'bold', marginBottom: 4 }}>🔄 {label || 'Laufenden Test fortsetzen?'}</div>
+        {session.detail && <div style={{ color: T.muted, fontSize: 13 }}>{session.detail}</div>}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={onResume} style={{
+          background: color, border: 'none', borderRadius: 8, color: '#000',
+          cursor: 'pointer', padding: '10px 20px', fontSize: 14, fontWeight: 'bold',
+        }}>Fortsetzen</button>
+        <button onClick={onDiscard} style={{
+          background: 'none', border: `1px solid ${T.border}`, borderRadius: 8,
+          color: T.muted, cursor: 'pointer', padding: '10px 16px', fontSize: 13,
+        }}>Verwerfen</button>
+      </div>
+    </div>
+  )
+}
+
 export function ProgressBar({ current, total, color = T.blue }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>

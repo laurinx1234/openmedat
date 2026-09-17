@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { T } from '../theme.js'
-import { Card, BackBtn, TimerBadge, useTimer, useSettingsKeyboard, pick, shuffle } from '../components/Shared.jsx'
+import { Card, BackBtn, TimerBadge, useTimer, useSettingsKeyboard, pick, shuffle, ResumeBanner } from '../components/Shared.jsx'
 import { ZahlenQuiz } from './Zahlenfolgen.jsx'
 import { makeTask as makeZahlen } from '../data/gens/index.js'
 import { makeTask as makeWort, WortQuiz } from './Wortfluessigkeit.jsx'
@@ -223,6 +223,51 @@ function PhaseCard({phase,onStart,timeLeft}){
 const PH_WEIGHTS = {figuren:'8',zahlen:'5.3',wort:'8',allerg_q:'13.4',impl:'5.3'}
 function phWeight(id){ const w=PH_WEIGHTS[id]; return w ? w+' / 40' : '' }
 
+// Persistence: silently save session on every state change, offer resume on intro.
+const SIM_STORAGE_KEY = 'openmedat_simulation_session'
+const SIM_MAX_AGE_MS = 48 * 3600 * 1000
+const SIM_SAVE_PHASES = ['phase_card','allerg_l','figuren','zahlen','wort','allerg_q','impl','results']
+const SIM_TIMER_PHASES = ['allerg_l','figuren','zahlen','wort','allerg_q','impl']
+
+function loadSimSession(){
+  try{
+    const raw=localStorage.getItem(SIM_STORAGE_KEY)
+    if(!raw)return null
+    const s=JSON.parse(raw)
+    if(Date.now()-(s.savedAt||0)>SIM_MAX_AGE_MS)return null
+    if(!SIM_SAVE_PHASES.includes(s.simPhase))return null
+    return s
+  }catch{return null}
+}
+
+function saveSimSession(data){
+  try{
+    if(data)localStorage.setItem(SIM_STORAGE_KEY,JSON.stringify(data))
+    else localStorage.removeItem(SIM_STORAGE_KEY)
+  }catch{ /* localStorage unavailable */ }
+}
+
+function describeSavedSim(s){
+  if(!s)return null
+  const phaseIdx=s.phaseIdx||0
+  const answered=cat=>{
+    if(!s[cat+'Questions']?.length)return null
+    const done=s[cat+'Answers']?.filter(a=>a!=null).length||0
+    return `${done}/${s[cat+'Questions'].length}`
+  }
+  const counts=[
+    answered('fig'),
+    answered('zahlen'),
+    answered('wort'),
+    answered('allerg'),
+    answered('impl'),
+  ].filter(Boolean)
+  const phaseMap={allerg_l:'Merkphase',figuren:'Figuren',zahlen:'Zahlenfolgen',wort:'Wortflüssigkeit',allerg_q:'Allergie-Abfrage',impl:'Implikationen',results:'Ergebnisse',phase_card:'Bereit'}
+  const here=phaseMap[s.simPhase]||s.simPhase
+  const detail=counts.length?`${here} · ${counts.join(' · ')}`:`Phase ${phaseIdx+1}/6`
+  return{phaseIdx,detail}
+}
+
 export default function Simulation({onBack}){
   const[simPhase,setSimPhase]=useState('intro')
   const[phaseIdx,setPhaseIdx]=useState(0)
@@ -248,7 +293,73 @@ export default function Simulation({onBack}){
 
   const[scores,setScores]=useState({})
 
+  // Saved-session banner state (read once on mount, cleared on resume/discard).
+  const[savedSim,setSavedSim]=useState(()=>loadSimSession())
+
+  // Ref for the live timer value so the save-effect can read it without re-running
+  // on every 250ms timer tick.
+  const timerRef=useRef(timer)
+  timerRef.current=timer
+
   const currentPhase=PHASES[phaseIdx]
+
+  // Auto-save on state changes. Never clears here — the intro screen must not wipe
+  // a loaded session (StrictMode double-invokes effects on mount, so any
+  // mount-time clear would destroy the session being resumed). Clearing happens
+  // explicitly in the Starten handler, discardSimulation and handleBack.
+  // `timer` is intentionally NOT in the deps — it changes every 250ms and we don't
+  // want to thrash localStorage. Saves on meaningful events (phase/answer changes)
+  // are enough; the timerEnd drift between saves is at most a few seconds.
+  useEffect(()=>{
+    if(!SIM_SAVE_PHASES.includes(simPhase))return
+    saveSimSession({
+      simPhase,phaseIdx,
+      timerEnd:SIM_TIMER_PHASES.includes(simPhase)?Date.now()+timerRef.current*1000:null,
+      figQuestions,figAnswers,
+      zahlenQuestions,zahlenAnswers,
+      wortQuestions,wortAnswers,
+      allergCards,allergShown,allergQuestions,allergAnswers,
+      implQuestions,implAnswers,
+      scores,
+      savedAt:Date.now(),
+    })
+  },[simPhase,phaseIdx,figQuestions,figAnswers,zahlenQuestions,zahlenAnswers,wortQuestions,wortAnswers,allergCards,allergShown,allergQuestions,allergAnswers,implQuestions,implAnswers,scores])
+
+  function resumeSimulation(){
+    const s=loadSimSession()
+    if(!s){setSavedSim(null);return}
+    setFigQuestions(s.figQuestions||[])
+    setFigAnswers(s.figAnswers||[])
+    setZahlenQuestions(s.zahlenQuestions||[])
+    setZahlenAnswers(s.zahlenAnswers||[])
+    setWortQuestions(s.wortQuestions||[])
+    setWortAnswers(s.wortAnswers||[])
+    setAllergCards(s.allergCards||[])
+    setAllergShown(s.allergShown||[])
+    setAllergQuestions(s.allergQuestions||[])
+    setAllergAnswers(s.allergAnswers||[])
+    setImplQuestions(s.implQuestions||[])
+    setImplAnswers(s.implAnswers||[])
+    setScores(s.scores||{})
+    setPhaseIdx(s.phaseIdx||0)
+    if(SIM_TIMER_PHASES.includes(s.simPhase)){
+      const rem=s.timerEnd?Math.max(0,Math.ceil((s.timerEnd-Date.now())/1000)):0
+      resetTimer(rem>0?rem:1)
+    }
+    setSimPhase(s.simPhase||'intro')
+    setSavedSim(null)
+  }
+
+  function discardSimulation(){
+    saveSimSession(null)
+    setSavedSim(null)
+  }
+
+  function handleBack(){
+    // When user leaves the results screen back to home, clear the saved session.
+    if(simPhase==='results')saveSimSession(null)
+    onBack()
+  }
 
   // Escape → end current phase
   useEffect(() => {
@@ -344,6 +455,13 @@ export default function Simulation({onBack}){
     <div style={{maxWidth:680,margin:'0 auto',padding:'24px 20px'}}>
       <BackBtn onBack={onBack}/>
       <div style={{color:T.orange,fontSize:24,fontWeight:'bold',marginBottom:24}}>Simulation</div>
+      <ResumeBanner
+        session={savedSim?describeSavedSim(savedSim):null}
+        onResume={resumeSimulation}
+        onDiscard={discardSimulation}
+        color={T.orange}
+        label="Laufende Simulation fortsetzen?"
+      />
       <Card>
         <div style={{marginBottom:24}}>
           <div style={{color:T.muted,fontSize:13,marginBottom:16}}>Simulierter MedAT-Testtag in Originalreihenfolge. Innerhalb jeder Kategorie kannst du Fragen überspringen und später beantworten. Ergebnisse werden erst am Ende angezeigt.</div>
@@ -363,7 +481,7 @@ export default function Simulation({onBack}){
           </div>
         </div>
         <div style={{display:'flex',gap:12}}>
-          <button onClick={()=>{setPhaseIdx(0);setSimPhase('phase_card')}} style={{background:T.orange,border:'none',borderRadius:10,color:'#000',cursor:'pointer',padding:'14px 32px',fontSize:16,fontWeight:'bold',boxShadow:simSkS()?`0 0 0 3px ${T.orange}88`:'none'}}>Starten</button>
+          <button onClick={()=>{setPhaseIdx(0);setSimPhase('phase_card');if(savedSim){saveSimSession(null);setSavedSim(null)}}} style={{background:T.orange,border:'none',borderRadius:10,color:'#000',cursor:'pointer',padding:'14px 32px',fontSize:16,fontWeight:'bold',boxShadow:simSkS()?`0 0 0 3px ${T.orange}88`:'none'}}>Starten</button>
         <div style={{color:T.muted,fontSize:11,marginTop:12}}>Enter starten · Esc zurück</div>
         </div>
       </Card>
@@ -380,7 +498,7 @@ export default function Simulation({onBack}){
       allerg:{questions:allergQuestions,answers:allergAnswers},
       impl:{questions:implQuestions,answers:implAnswers},
     }
-    return<ResultsScreen scores={scores} onBack={onBack} reviewData={reviewData}/>
+    return<ResultsScreen scores={scores} onBack={handleBack} reviewData={reviewData}/>
   }
 
   // Allerg learn
