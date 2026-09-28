@@ -6,9 +6,9 @@ export default defineConfig({
   base: '/',
   server: {
     historyApiFallback: true,
-    allowedHosts: ['openmedat.rndserver.cc'], // Falls im Dev-Modus blockiert
+    allowedHosts: ['openmedat.rndserver.cc', 'openmedat.laurinx.cc'], // Falls im Dev-Modus blockiert
   },
   preview: {
-    allowedHosts: ['openmedat.rndserver.cc'], // Falls im Preview-Modus blockiert
+    allowedHosts: ['openmedat.rndserver.cc', 'openmedat.laurinx.cc'], // Falls im Preview-Modus blockiert
   },
 })
