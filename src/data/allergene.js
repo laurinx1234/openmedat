@@ -1,7 +1,7 @@
 export const ALLERGENE = `
-Gr�ser
-B�ume
-Kr�uter
+Gräser
+Bäume
+Kräuter
 Hausstaubmilben
 Katzenhaare
 Hundehaare
@@ -35,12 +35,12 @@ Latex
 Bienenstich
 Wespenstich
 Ameisenstich
-M�ckenstich
+Mückenstich
 Penicillin
 Aspirin
 Ibuprofen
 Paracetamol
-Lokalan�sthetika
+Lokalanästhetika
 Kontrastmittel
 Nickel
 Chrom
@@ -118,12 +118,12 @@ Dattel
 Kokosnuss
 Olive
 Sonnenblumenkerne
-K�rbiskerne
+Kürbiskerne
 Leinsamen
 Chiasamen
 Mohnsamen
 Koriander
-K�mmel
+Kümmel
 Anis
 Dill
 Petersilie
@@ -139,7 +139,7 @@ Ingwer
 Kurkuma
 Pfeffer
 Chili
-H�hnerfleisch
+Hühnerfleisch
 Rindfleisch
 Schweinefleisch
 Lammfleisch
@@ -157,10 +157,10 @@ Fliegenlarven
 Heuschrecken
 Grillen
 Kakerlaken
-M�ckenlarven
+Mückenlarven
 Wanzen
 Spinnen
-K�sesorten
+Käsesorten
 Joghurt
 Buttermilch
 Sahne
@@ -168,9 +168,9 @@ Quark
 Linsen
 Kichererbsen
 Erbsen
-Gr�ne Bohnen
+Grüne Bohnen
 Kidneybohnen
-Wei�e Bohnen
+Weiße Bohnen
 Champignon
 Steinpilz
 Austernpilz
@@ -186,8 +186,8 @@ Gluten
 Fructose
 Laktose
 Histamin
-K�lte
-W�rme
+Kälte
+Wärme
 Sonnenlicht
 Druck
 Vibration
@@ -202,13 +202,13 @@ Bienenwachs
 Kamille
 Ringelblume
 Arnika
-Teebaum�l
+Teebaumöl
 Lavendel
 Eukalyptus
 Menthol
 Capsaicin
-Zitronens�ure
-Ascorbins�ure
+Zitronensäure
+Ascorbinsäure
 Aspartam
 Saccharin
 Zyklamat
@@ -245,8 +245,8 @@ Streptomycin
 Erythromycin
 Clindamycin
 Mupirocin
-Fucidins�ure
-Salicyls�ure
+Fucidinsäure
+Salicylsäure
 Retinol
 Hydrochinon
 Resorcin

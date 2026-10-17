@@ -1,8 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
-import { T } from './theme.js'
+import { T, getTheme, toggleTheme } from './theme.js'
 import { navigate, useRoute } from './router.js'
 import { getSession, isQuizReady, minutesUntilQuiz } from './allergStore.js'
-import { playBeep, getStats } from './components/Shared.jsx'
+import {
+  playBeep,
+  getStats,
+  getStatsExportJson,
+  copyText,
+  importStats,
+  ThemeToggle,
+  SiteFooter,
+} from './components/Shared.jsx'
 import Zahlenfolgen from './tests/Zahlenfolgen.jsx'
 import Wortfluessigkeit from './tests/Wortfluessigkeit.jsx'
 import Implikationen from './tests/Implikationen.jsx'
@@ -19,7 +27,7 @@ const TESTS = [
     title: 'Zahlenfolgen',
     icon: '🔢',
     desc: '7 Zahlen → 8. und 9. Stelle berechnen',
-    color: T.blue,
+    color: 'blue',
     component: Zahlenfolgen,
   },
   {
@@ -27,7 +35,7 @@ const TESTS = [
     title: 'Wortflüssigkeit',
     icon: '🔤',
     desc: 'Wörter erkennen – Anfangsbuchstabe finden',
-    color: T.mauve,
+    color: 'mauve',
     component: Wortfluessigkeit,
   },
   {
@@ -35,7 +43,7 @@ const TESTS = [
     title: 'Implikationen erkennen',
     icon: '🧠',
     desc: 'Zwei Aussagen → logische Schlussfolgerung',
-    color: T.yellow,
+    color: 'yellow',
     component: Implikationen,
   },
   {
@@ -43,7 +51,7 @@ const TESTS = [
     title: 'Allergieausweise',
     icon: '💳',
     desc: 'Ausweise merken und Fragen beantworten',
-    color: T.green,
+    color: 'green',
     component: Allergieausweise,
   },
   {
@@ -51,7 +59,7 @@ const TESTS = [
     title: 'Figuren zusammensetzen',
     icon: '🔷',
     desc: 'Einzelteile zu einer Figur zusammensetzen',
-    color: T.teal,
+    color: 'teal',
     component: Figuren,
   },
   {
@@ -59,7 +67,7 @@ const TESTS = [
     title: 'Major-System',
     icon: '🔗',
     desc: 'Zahlen mit Bildwörtern verknüpfen',
-    color: T.pink,
+    color: 'pink',
     component: MajorSystem,
   },
   {
@@ -67,7 +75,7 @@ const TESTS = [
     title: 'Simulation',
     icon: '🎓',
     desc: 'Komplette KFF-Simulation',
-    color: T.orange,
+    color: 'orange',
     component: Simulation,
     noStats: true,
   },
@@ -76,7 +84,7 @@ const TESTS = [
     title: 'Simulationsrechner',
     icon: '📝',
     desc: 'Simulationstimer und -Auswertung für externe Simulationen',
-    color: T.orange,
+    color: 'orange',
     component: Simulationsrechner,
     noStats: true,
   },
@@ -148,6 +156,7 @@ function QuizBadge() {
 
 function TestTile({ test, focused, onClick }) {
   const ref = useRef(null)
+  const color = T[test.color]
   useEffect(() => {
     if (focused && ref.current) ref.current.focus()
   }, [focused])
@@ -157,38 +166,201 @@ function TestTile({ test, focused, onClick }) {
       onClick={onClick}
       style={{
         background: T.surf,
-        border: `2px solid ${focused ? test.color : T.border}`,
-        borderRadius: 16,
-        padding: '24px 20px',
+        border: `1px solid ${focused ? color : T.border}`,
+        borderRadius: 20,
+        padding: '22px 20px',
         cursor: 'pointer',
         textAlign: 'left',
         color: T.text,
-        transition: 'all 0.15s',
+        transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
         outline: 'none',
         width: '100%',
-        boxShadow: focused ? `0 0 0 2px ${test.color}44` : 'none',
+        height: '100%',
+        boxShadow: focused ? T.shadow : T.shadowSm,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-        <span style={{ fontSize: 32, lineHeight: 1 }}>{test.icon}</span>
+        <span
+          style={{
+            display: 'flex',
+            flex: 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 44,
+            height: 44,
+            borderRadius: 13,
+            background: `${color}16`,
+            fontSize: 24,
+            lineHeight: 1,
+          }}
+        >
+          {test.icon}
+        </span>
         <div>
-          <div style={{ color: test.color, fontSize: 17, fontWeight: 'bold', marginBottom: 4 }}>{test.title}</div>
-          <div style={{ color: T.text, fontSize: 14, lineHeight: 1.4 }}>{test.desc}</div>
+          <div style={{ color, fontSize: 17, fontWeight: 700, marginBottom: 4, letterSpacing: '-0.01em' }}>
+            {test.title}
+          </div>
+          <div style={{ color: T.text2, fontSize: 14, lineHeight: 1.45 }}>{test.desc}</div>
         </div>
       </div>
     </button>
   )
 }
 
+function StatsImportDialog({ validIds, onClose, onImported }) {
+  const [text, setText] = useState('')
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const h = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [onClose])
+
+  const submit = (e) => {
+    e.preventDefault()
+    const result = importStats(text, validIds)
+    if (!result.ok) {
+      setError(result.error)
+      return
+    }
+    onImported(result)
+  }
+
+  return (
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 2000,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+      }}
+    >
+      <form
+        onSubmit={submit}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Statistik importieren"
+        style={{
+          background: T.surf,
+          border: `1px solid ${T.border}`,
+          borderRadius: 16,
+          padding: 32,
+          maxWidth: 480,
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          color: T.text,
+        }}
+      >
+        <h2 style={{ margin: '0 0 8px', fontSize: 20 }}>Statistik importieren</h2>
+        <p style={{ color: T.muted, fontSize: 14, lineHeight: 1.6, margin: '0 0 16px' }}>
+          JSON aus einem früheren Export einfügen. Vorhandene Einträge bleiben erhalten, Duplikate werden übersprungen.
+        </p>
+        <textarea
+          autoFocus
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value)
+            if (error) setError('')
+          }}
+          aria-label="Statistik-JSON"
+          placeholder="Statistik-JSON hier einfügen …"
+          style={{
+            width: '100%',
+            minHeight: 160,
+            resize: 'vertical',
+            background: T.surf2,
+            border: `1px solid ${T.border}`,
+            borderRadius: 8,
+            color: T.text,
+            padding: '10px 12px',
+            fontSize: 12.5,
+            fontFamily: 'monospace',
+            lineHeight: 1.5,
+          }}
+        />
+        {error && (
+          <div role="alert" style={{ color: T.red, fontSize: 13, marginTop: 10 }}>
+            {error}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: `1px solid ${T.border}`,
+              borderRadius: 8,
+              color: T.muted,
+              cursor: 'pointer',
+              padding: '10px 16px',
+              fontSize: 13,
+            }}
+          >
+            Abbrechen
+          </button>
+          <button
+            type="submit"
+            style={{
+              background: T.blue,
+              border: 'none',
+              borderRadius: 8,
+              color: T.onAccent,
+              cursor: 'pointer',
+              padding: '10px 20px',
+              fontSize: 14,
+              fontWeight: 700,
+            }}
+          >
+            Importieren
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export default function App() {
   const route = useRoute()
   const [focused, setFocused] = useState(0)
-  const [showStats, setShowStats] = useState(false)
+  const showStats = route === '/statistik'
+  const [stats, setStats] = useState(getStats)
+  const [showImport, setShowImport] = useState(false)
+  const [notice, setNotice] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [theme, setThemeState] = useState(getTheme)
+
+  const handleToggleTheme = () => setThemeState(toggleTheme())
 
   useEffect(() => {
     if (!localStorage.getItem('openmedat_visited')) setShowOnboarding(true)
   }, [])
+
+  useEffect(() => {
+    if (!notice) return
+    const id = setTimeout(() => setNotice(null), 3000)
+    return () => clearTimeout(id)
+  }, [notice])
+
+  useEffect(() => {
+    if (!showStats) {
+      setShowImport(false)
+      return
+    }
+    setStats(getStats())
+    setNotice(null)
+  }, [showStats])
 
   useEffect(() => {
     if (route === '/') return
@@ -200,9 +372,11 @@ export default function App() {
   }, [route])
 
   useEffect(() => {
-    if (route !== '/') return
+    if (route !== '/' || showStats) return
     const cols = 2
     const h = (e) => {
+      const tag = e.target?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if (e.key === 'ArrowRight') {
         e.preventDefault()
         setFocused((f) => Math.min(f + 1, TESTS.length - 1))
@@ -220,13 +394,22 @@ export default function App() {
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [route, focused])
+  }, [route, focused, showStats])
 
   const screen = renderScreen(route)
   if (screen) {
     return (
-      <div style={{ minHeight: '100vh', background: T.bg, paddingBottom: 60 }}>
-        {screen}
+      <div
+        style={{
+          minHeight: '100vh',
+          background: T.bg,
+          color: T.text,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div style={{ flex: 1 }}>{screen}</div>
+        <SiteFooter />
         <Feedback />
       </div>
     )
@@ -235,36 +418,95 @@ export default function App() {
   const statTests = TESTS.filter((t) => !t.noStats).map((t) => ({
     id: t.path.slice(1),
     title: t.title,
-    color: t.color,
+    color: T[t.color],
   }))
 
+  async function handleExportStats() {
+    const ok = await copyText(getStatsExportJson())
+    setNotice(
+      ok ? { ok: true, text: 'In die Zwischenablage kopiert ✓' } : { ok: false, text: 'Kopieren fehlgeschlagen.' }
+    )
+  }
+
+  function handleImportedStats(result) {
+    setShowImport(false)
+    setStats(getStats())
+    let text
+    if (result.imported === 0) {
+      text = `Keine neuen Einträge${result.duplicates ? ` (${result.duplicates} Duplikate)` : ''}.`
+    } else {
+      text = `${result.imported} Einträge importiert`
+      if (result.duplicates) text += ` · ${result.duplicates} Duplikate`
+      if (result.rejected) text += ` · ${result.rejected} ungültig`
+      if (result.trimmed) text += ` · ${result.trimmed} wegen Limit verworfen`
+    }
+    setNotice({ ok: true, text })
+  }
+
   if (showStats) {
-    const allStats = getStats()
+    const allStats = stats
+    const statsActionStyle = {
+      minHeight: 36,
+      background: T.surf,
+      border: `1px solid ${T.border}`,
+      borderRadius: 999,
+      color: T.text,
+      cursor: 'pointer',
+      padding: '0 16px',
+      fontSize: 13,
+      fontWeight: 700,
+      boxShadow: T.shadowSm,
+    }
     const byTest = {}
     for (const t of statTests) byTest[t.id] = allStats.filter((s) => s.test === t.id).slice(-10)
     const hasAny = Object.values(byTest).some((a) => a.length)
 
     return (
-      <div style={{ minHeight: '100vh', background: T.bg, color: T.text }}>
+      <div style={{ minHeight: '100vh', background: T.bg, color: T.text, display: 'flex', flexDirection: 'column' }}>
         <Feedback />
-        <div style={{ maxWidth: 800, margin: '0 auto', padding: '48px 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32 }}>
-            <button
-              onClick={() => setShowStats(false)}
-              style={{
-                background: 'none',
-                border: `1px solid ${T.border}`,
-                borderRadius: 8,
-                color: T.muted,
-                cursor: 'pointer',
-                padding: '8px 16px',
-                fontSize: 13,
-              }}
-            >
-              ← Hauptmenü
-            </button>
-            <div style={{ fontSize: 24, fontWeight: 'bold' }}>📊 Statistik</div>
+        <div style={{ flex: 1, width: '100%', maxWidth: 800, margin: '0 auto', padding: '48px 24px 24px' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
+              marginBottom: notice ? 10 : 32,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <button
+                onClick={() => navigate('/')}
+                style={{
+                  background: T.surf,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 999,
+                  color: T.muted,
+                  cursor: 'pointer',
+                  padding: '8px 16px',
+                  fontSize: 13,
+                  boxShadow: T.shadowSm,
+                }}
+              >
+                ← Hauptmenü
+              </button>
+              <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>Statistik</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={handleExportStats} style={statsActionStyle}>
+                Exportieren
+              </button>
+              <button onClick={() => setShowImport(true)} style={statsActionStyle}>
+                Importieren
+              </button>
+            </div>
           </div>
+          {notice && (
+            <div role="status" style={{ color: notice.ok ? T.green : T.red, fontSize: 13, marginBottom: 22 }}>
+              {notice.text}
+            </div>
+          )}
           {!hasAny && (
             <div style={{ color: T.muted, textAlign: 'center', padding: '48px 0' }}>
               Noch keine Statistiken vorhanden. Spiele einen Test im Nicht-Endlosmodus, um Ergebnisse zu speichern.
@@ -386,44 +628,61 @@ export default function App() {
               )
             })}
         </div>
+        <SiteFooter />
+        {showImport && (
+          <StatsImportDialog
+            validIds={statTests.map((t) => t.id)}
+            onClose={() => setShowImport(false)}
+            onImported={handleImportedStats}
+          />
+        )}
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: T.bg, color: T.text }}>
+    <div style={{ minHeight: '100vh', background: T.bg, color: T.text, display: 'flex', flexDirection: 'column' }}>
       <Feedback />
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '48px 24px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 56 }}>
-          <div style={{ fontSize: 13, letterSpacing: 4, color: T.muted, marginBottom: 12 }}>
-            MEDIZINISCHER AUFNAHMETEST
-          </div>
-          <div style={{ fontSize: 46, fontWeight: 'bold', color: T.text, marginBottom: 8, letterSpacing: -2 }}>
+      <div style={{ flex: 1, width: '100%', maxWidth: 900, margin: '0 auto', padding: '48px 24px 0' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            marginBottom: 32,
+          }}
+        >
+          <h1 style={{ fontSize: 38, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.1, color: T.text }}>
             openMedAT
+          </h1>
+          <div style={{ display: 'flex', flex: 'none', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => navigate('/statistik')}
+              style={{
+                minHeight: 44,
+                background: T.surf,
+                border: `1px solid ${T.border}`,
+                borderRadius: 999,
+                color: T.text,
+                cursor: 'pointer',
+                padding: '0 20px',
+                fontSize: 13.5,
+                fontWeight: 700,
+                boxShadow: T.shadowSm,
+              }}
+            >
+              Statistik
+            </button>
+            <ThemeToggle theme={theme} onToggle={handleToggleTheme} />
           </div>
-          <div style={{ fontSize: 16, color: T.muted }}>Kognitive Fähigkeiten und Fertigkeiten — 8 Testmodule</div>
         </div>
         <QuizBadge />
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-          <button
-            onClick={() => setShowStats(true)}
-            style={{
-              background: T.surf,
-              border: `1px solid ${T.border}`,
-              borderRadius: 10,
-              color: T.muted,
-              cursor: 'pointer',
-              padding: '10px 24px',
-              fontSize: 14,
-            }}
-          >
-            📊 Statistik
-          </button>
-        </div>
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+            gridAutoRows: '1fr',
             gap: 16,
             marginBottom: 48,
           }}
@@ -439,38 +698,6 @@ export default function App() {
           </div>
           <div>
             Im Test: <span style={{ color: T.yellow }}>A · S · D · F · G</span> für die fünf Antwortoptionen
-          </div>
-          <div style={{ marginTop: 8 }}>
-            <a
-              href="https://github.com/laurinx1234/openmedat"
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: T.muted, textDecoration: 'none' }}
-            >
-              github.com/laurinx1234/openmedat
-            </a>
-          </div>
-          <div
-            style={{
-              marginTop: 16,
-              paddingTop: 16,
-              borderTop: `1px solid ${T.border}`,
-              fontSize: 12,
-              color: T.muted,
-              maxWidth: 600,
-              margin: '16px auto 0',
-              lineHeight: 1.6,
-            }}
-          >
-            openMedAT ist ein inoffizielles Hobbyprojekt und steht in keiner Verbindung zur Medizinischen Universität,
-            dem MedAT oder dessen Veranstaltern. Alle Inhalte dienen ausschließlich der privaten Übung. Irrtümer und
-            Fehler vorbehalten.
-            <div style={{ marginTop: 8 }}>
-              Bei Beschwerden oder rechtlichen Anliegen:{' '}
-              <a href="mailto:laurinpublic@gmail.com" style={{ color: T.muted }}>
-                laurinpublic@gmail.com
-              </a>
-            </div>
           </div>
         </div>
         {showOnboarding && (
@@ -543,12 +770,12 @@ export default function App() {
                 style={{
                   background: T.yellow,
                   border: 'none',
-                  borderRadius: 10,
-                  color: '#000',
+                  borderRadius: 14,
+                  color: T.onAccent,
                   cursor: 'pointer',
                   padding: '14px 36px',
                   fontSize: 16,
-                  fontWeight: 'bold',
+                  fontWeight: 700,
                   width: '100%',
                 }}
               >
@@ -558,6 +785,7 @@ export default function App() {
           </div>
         )}
       </div>
+      <SiteFooter />
     </div>
   )
 }

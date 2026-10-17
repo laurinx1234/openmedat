@@ -93,7 +93,7 @@ export default function Feedback() {
             <div style={{ fontSize: 28, marginBottom: 12 }}>💬</div>
             <h2 style={{ color: T.text, margin: '0 0 8px', fontSize: 20 }}>Feedback willkommen!</h2>
             <p style={{ color: T.muted, fontSize: 14, lineHeight: 1.6, margin: '0 0 24px' }}>
-              Bugs gefunden? Ideen für neue Features? Erreichst du mich am besten über Reddit-DM oder per E-Mail.
+              Bugs gefunden? Ideen für neue Features? Du erreichst mich am besten über Reddit-DM oder per E-Mail.
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               <a

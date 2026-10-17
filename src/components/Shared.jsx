@@ -1,5 +1,113 @@
 import { useState, useEffect, useRef } from 'react'
 import { T } from '../theme.js'
+import { CONTACT_EMAIL } from '../data/links.js'
+import { MAX_STATS, buildStatsExport, parseStatsInput, mergeStats } from '../utils/stats.js'
+
+export function ThemeToggle({ theme, onToggle }) {
+  const dark = theme === 'dark'
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={dark ? 'Light-Modus einschalten' : 'Dark-Modus einschalten'}
+      title={dark ? 'Light-Modus' : 'Dark-Modus'}
+      style={{
+        display: 'flex',
+        flex: 'none',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 44,
+        height: 44,
+        borderRadius: 999,
+        border: `1px solid ${T.border}`,
+        background: T.surf,
+        color: T.text,
+        boxShadow: T.shadowSm,
+        cursor: 'pointer',
+        transition: 'background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease',
+      }}
+    >
+      {dark ? (
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="square"
+          strokeLinejoin="miter"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+        </svg>
+      ) : (
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="square"
+          strokeLinejoin="miter"
+          aria-hidden="true"
+        >
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
+export function SiteFooter() {
+  const footerLink = {
+    color: T.muted,
+    textDecoration: 'none',
+    fontSize: 13,
+  }
+  return (
+    <footer
+      style={{
+        marginTop: 48,
+        borderTop: `1px solid ${T.border}`,
+        padding: '28px 24px 40px',
+      }}
+    >
+      <div style={{ maxWidth: 900, margin: '0 auto' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+            marginBottom: 10,
+          }}
+        >
+          <span style={{ color: T.text, fontSize: 14, fontWeight: 700, letterSpacing: '-0.01em' }}>openMedAT</span>
+          <div style={{ display: 'flex', gap: 20 }}>
+            <a href="https://github.com/laurinx1234/openmedat" target="_blank" rel="noreferrer" style={footerLink}>
+              GitHub ↗
+            </a>
+          </div>
+        </div>
+        <p style={{ color: T.muted, fontSize: 12.5, lineHeight: 1.7, maxWidth: 720 }}>
+          openMedAT ist ein inoffizielles Hobbyprojekt und steht in keiner Verbindung zur Medizinischen Universität,
+          dem MedAT oder dessen Veranstaltern. Alle Inhalte dienen ausschließlich der privaten Übung. Irrtümer und
+          Fehler vorbehalten.
+        </p>
+        <p style={{ color: T.muted, fontSize: 12.5, lineHeight: 1.7, marginTop: 6 }}>
+          Bei Beschwerden oder rechtlichen Anliegen wende dich bitte an:{' '}
+          <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: T.muted, textUnderlineOffset: 2 }}>
+            {CONTACT_EMAIL}
+          </a>
+        </p>
+      </div>
+    </footer>
+  )
+}
 
 export function useTimer(seconds, paused = false) {
   const [t, setT] = useState(seconds)
@@ -87,7 +195,7 @@ export function ResumeBanner({ session, onResume, onDiscard, color = T.blue, lab
             background: color,
             border: 'none',
             borderRadius: 8,
-            color: '#000',
+            color: T.onAccent,
             cursor: 'pointer',
             padding: '10px 20px',
             fontSize: 14,
@@ -304,8 +412,8 @@ export function SettingRow({ label, options, value, onChange }) {
 // ─── Keyboard navigation for settings screens ─────────────────────────────────
 // rows: 2D array of { action } objects. rows.length index = Start button.
 // active: only attach keyboard handler when true (pass mode==='settings')
-export function useSettingsKeyboard(rows, onStart, onBack, active) {
-  const [pos, setPos] = useState([0, 0])
+export function useSettingsKeyboard(rows, onStart, onBack, active, initialPos = [0, 0]) {
+  const [pos, setPos] = useState(initialPos)
   const ref = useRef({})
   // Always keep ref current so the handler sees latest values
   useEffect(() => {
@@ -383,7 +491,7 @@ export function NavDots({ questions, answers, current, onGo, color }) {
               borderRadius: 6,
               background: col,
               border: `1px solid ${border}`,
-              color: isCur ? '#000' : T.text,
+              color: isCur ? T.onAccent : T.text,
               fontSize: 11,
               cursor: 'pointer',
               fontWeight: isCur ? 'bold' : 'normal',
@@ -411,7 +519,6 @@ export function ScoreBar({ score, total, color }) {
 
 // ─── Statistics (localStorage) ──────────────────────────────────────────────────
 const STATS_KEY = 'openmedat_stats'
-const MAX_STATS = 100
 
 export function saveStat(test, correct, total) {
   try {
@@ -429,6 +536,55 @@ export function getStats() {
     return JSON.parse(localStorage.getItem(STATS_KEY) || '[]')
   } catch (e) {
     return []
+  }
+}
+
+export function getStatsExportJson() {
+  return JSON.stringify(buildStatsExport(getStats()), null, 2)
+}
+
+export async function copyText(text) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch (e) {
+    /* Fallback unten */
+  }
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.style.position = 'fixed'
+    ta.style.top = '-1000px'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+    return ok
+  } catch (e) {
+    return false
+  }
+}
+
+export function importStats(rawText, validTestIds) {
+  const parsed = parseStatsInput(rawText, validTestIds)
+  if (!parsed.ok) return parsed
+
+  const merged = mergeStats(getStats(), parsed.entries)
+  try {
+    localStorage.setItem(STATS_KEY, JSON.stringify(merged.stats))
+  } catch (e) {
+    return { ok: false, error: 'Speichern fehlgeschlagen (Speicher voll?).' }
+  }
+  return {
+    ok: true,
+    imported: merged.imported,
+    duplicates: merged.duplicates,
+    rejected: parsed.rejected,
+    trimmed: merged.trimmed,
   }
 }
 

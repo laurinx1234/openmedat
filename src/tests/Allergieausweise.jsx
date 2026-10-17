@@ -85,16 +85,22 @@ export async function fetchPhotos(count = 8) {
   }
 }
 
-export function AusweisCard({ card }) {
+export function AusweisCard({ card, grayscale = false }) {
   return (
     <div style={{ background: T.surf, border: `1px solid ${T.border}`, borderRadius: 12, padding: 14, width: '100%' }}>
       <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
         <img
           src={card.photoUrl}
-          width={70}
-          height={70}
+          width={120}
+          height={120}
           alt={card.name}
-          style={{ borderRadius: '50%', objectFit: 'cover', objectPosition: 'center top', flexShrink: 0 }}
+          style={{
+            borderRadius: 10,
+            objectFit: 'cover',
+            objectPosition: 'center top',
+            flexShrink: 0,
+            filter: grayscale ? 'grayscale(1)' : 'none',
+          }}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ color: T.green, fontWeight: 'bold', fontSize: 17, marginBottom: 4 }}>{card.name}</div>
@@ -120,7 +126,7 @@ export function AusweisCard({ card }) {
   )
 }
 
-export function AllergieQuiz({ questions, answers, onAnswer, color }) {
+export function AllergieQuiz({ questions, answers, onAnswer, color, grayscale = false }) {
   const [focusedQ, setFocusedQ] = useState(0)
   const questionRefs = useRef({})
   const fqRef = useRef(focusedQ)
@@ -199,10 +205,15 @@ export function AllergieQuiz({ questions, answers, onAnswer, color }) {
                       <div style={{ marginBottom: 10 }}>
                         <img
                           src={q.card.photoUrl}
-                          width={56}
-                          height={56}
+                          width={96}
+                          height={96}
                           alt=""
-                          style={{ borderRadius: '50%', objectFit: 'cover', objectPosition: 'center top' }}
+                          style={{
+                            borderRadius: 10,
+                            objectFit: 'cover',
+                            objectPosition: 'center top',
+                            filter: grayscale ? 'grayscale(1)' : 'none',
+                          }}
                         />
                       </div>
                     )}
@@ -561,9 +572,14 @@ export default function Allergieausweise({ onBack }) {
     if (isQuizReady()) return 'quiz_pending'
     return 'learn_done'
   })
-  const [settings, setSettings] = useState(
-    () => sInit?.settings || { cardCount: 8, learnMin: 8, quizDelayMin: 35, qCount: 25 }
-  )
+  const [settings, setSettings] = useState(() => ({
+    cardCount: 8,
+    learnMin: 8,
+    quizDelayMin: 35,
+    qCount: 25,
+    grayscale: false,
+    ...sInit?.settings,
+  }))
   const [allCards, setAllCards] = useState(() => sInit?.allCards || [])
   const [shownCards, setShownCards] = useState(() => sInit?.shownCards || [])
   const [learnTimer, resetLearn] = useTimer(0)
@@ -583,7 +599,7 @@ export default function Allergieausweise({ onBack }) {
       if (s) {
         setShownCards(s.shownCards || [])
         setAllCards(s.allCards || [])
-        if (s.settings) setSettings(s.settings)
+        if (s.settings) setSettings((prev) => ({ ...prev, ...s.settings }))
         if (s.questions && s.questions.length) {
           setQuestions(s.questions)
           setAnswers(s.answers || Array(s.questions.length).fill(null))
@@ -724,12 +740,18 @@ export default function Allergieausweise({ onBack }) {
       action: () => setSettings((s) => ({ ...s, quizDelayMin: v })),
     })),
     [5, 10, 15, 20, 25].map((v) => ({ action: () => setSettings((s) => ({ ...s, qCount: v })) })),
+    [
+      { action: () => setSettings((s) => ({ ...s, grayscale: false })) },
+      { action: () => setSettings((s) => ({ ...s, grayscale: true })) },
+    ],
   ]
+  const cardCountIdx = [2, 3, 4, 5, 6, 7, 8].indexOf(settings.cardCount)
   const { isFocused: skF, isStartFocused: skS } = useSettingsKeyboard(
     skGroupDefs,
     startLearn,
     onBack,
-    phase === 'settings'
+    phase === 'settings',
+    [0, cardCountIdx < 0 ? 0 : cardCountIdx]
   )
 
   // ── Settings ──
@@ -764,7 +786,7 @@ export default function Allergieausweise({ onBack }) {
                 background: T.green,
                 border: 'none',
                 borderRadius: 8,
-                color: '#000',
+                color: T.onAccent,
                 cursor: 'pointer',
                 padding: '10px 20px',
                 fontSize: 14,
@@ -809,6 +831,15 @@ export default function Allergieausweise({ onBack }) {
                 { v: 25, l: '25' },
               ],
               row: 3,
+            },
+            {
+              label: 'Fotos',
+              key: 'grayscale',
+              opts: [
+                { v: false, l: 'Farbe' },
+                { v: true, l: 'Graustufen' },
+              ],
+              row: 4,
             },
           ].map(({ label, key, opts, row, type, min, max }) => (
             <div key={key} style={{ marginBottom: 20 }}>
@@ -870,7 +901,7 @@ export default function Allergieausweise({ onBack }) {
               background: T.green,
               border: 'none',
               borderRadius: 10,
-              color: '#000',
+              color: T.onAccent,
               cursor: 'pointer',
               padding: '14px 32px',
               fontSize: 16,
@@ -960,9 +991,9 @@ export default function Allergieausweise({ onBack }) {
             }}
           />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 16 }}>
           {shownCards.map((c, i) => (
-            <AusweisCard key={i} card={c} />
+            <AusweisCard key={i} card={c} grayscale={settings.grayscale} />
           ))}
         </div>
         <div style={{ color: T.muted, fontSize: 12, marginTop: 16, textAlign: 'center' }}>
@@ -990,7 +1021,7 @@ export default function Allergieausweise({ onBack }) {
                 background: T.green,
                 border: 'none',
                 borderRadius: 12,
-                color: '#000',
+                color: T.onAccent,
                 cursor: 'pointer',
                 padding: '16px 40px',
                 fontSize: 18,
@@ -1034,7 +1065,7 @@ export default function Allergieausweise({ onBack }) {
                 background: T.green,
                 border: 'none',
                 borderRadius: 12,
-                color: '#000',
+                color: T.onAccent,
                 cursor: 'pointer',
                 padding: '14px 32px',
                 fontSize: 16,
@@ -1075,13 +1106,13 @@ export default function Allergieausweise({ onBack }) {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))',
+            gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))',
             gap: 12,
             marginBottom: 32,
           }}
         >
           {shownCards.map((c, i) => (
-            <AusweisCard key={i} card={c} />
+            <AusweisCard key={i} card={c} grayscale={settings.grayscale} />
           ))}
         </div>
         <div style={{ color: T.green, fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Fragen</div>
@@ -1098,10 +1129,15 @@ export default function Allergieausweise({ onBack }) {
                       <div style={{ marginBottom: 8 }}>
                         <img
                           src={q.card.photoUrl}
-                          width={40}
-                          height={40}
+                          width={64}
+                          height={64}
                           alt=""
-                          style={{ borderRadius: '50%', objectFit: 'cover', objectPosition: 'center top' }}
+                          style={{
+                            borderRadius: 8,
+                            objectFit: 'cover',
+                            objectPosition: 'center top',
+                            filter: settings.grayscale ? 'grayscale(1)' : 'none',
+                          }}
                         />
                       </div>
                     )}
@@ -1195,7 +1231,7 @@ export default function Allergieausweise({ onBack }) {
             background: T.green,
             border: 'none',
             borderRadius: 8,
-            color: '#000',
+            color: T.onAccent,
             cursor: 'pointer',
             padding: '8px 16px',
             fontSize: 13,
@@ -1205,7 +1241,13 @@ export default function Allergieausweise({ onBack }) {
           Ergebnis ({answeredCount}/{questions.length})
         </button>
       </div>
-      <AllergieQuiz questions={questions} answers={answers} onAnswer={answer} color={T.green} />
+      <AllergieQuiz
+        questions={questions}
+        answers={answers}
+        onAnswer={answer}
+        color={T.green}
+        grayscale={settings.grayscale}
+      />
       <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
         <button
           onClick={() => setDone(true)}
@@ -1213,7 +1255,7 @@ export default function Allergieausweise({ onBack }) {
             background: T.green,
             border: 'none',
             borderRadius: 10,
-            color: '#000',
+            color: T.onAccent,
             cursor: 'pointer',
             padding: '14px 40px',
             fontSize: 16,

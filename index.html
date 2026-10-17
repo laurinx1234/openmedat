@@ -2,21 +2,105 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="openMedAT – Übungstests für den MedAT: Zahlenfolgen, Wortflüssigkeit, Implikationen, Allergieausweise, Figuren, Major-System und Simulation."
+    />
+    <meta name="theme-color" content="#f4f3ef" />
     <title>openMedAT</title>
+    <script>
+      ;(function () {
+        var t
+        try {
+          t = localStorage.getItem('openmedat.theme')
+        } catch (e) {}
+        document.documentElement.dataset.theme =
+          t === 'dark' || t === 'light' ? t : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      })()
+    </script>
+    <link rel="preload" href="/fonts/satoshi-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/satoshi-700.woff2" as="font" type="font/woff2" crossorigin />
     <style>
+      @font-face {
+        font-family: 'Satoshi';
+        src: url('/fonts/satoshi-400.woff2') format('woff2');
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Satoshi';
+        src: url('/fonts/satoshi-500.woff2') format('woff2');
+        font-weight: 500;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Satoshi';
+        src: url('/fonts/satoshi-700.woff2') format('woff2');
+        font-weight: 700;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Satoshi';
+        src: url('/fonts/satoshi-900.woff2') format('woff2');
+        font-weight: 900;
+        font-style: normal;
+        font-display: swap;
+      }
+      :root {
+        color-scheme: light;
+        --bg: #f4f3ef;
+        --surface: #fff;
+        --ink: #161616;
+        --line: #e6e4dc;
+        --green: #0e6a58;
+        --muted: #82827b;
+      }
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #141614;
+        --surface: #1e211f;
+        --ink: #f1f2ee;
+        --line: #2a2e2b;
+        --green: #63c3aa;
+        --muted: #8d918b;
+      }
       * {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
       }
-      body {
-        background: #0a0c14;
-        color: #cdd6f4;
-        font-family: 'Courier New', monospace;
+      html {
+        -webkit-text-size-adjust: 100%;
       }
-      button {
-        font-family: 'Courier New', monospace;
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          'Satoshi',
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          'Helvetica Neue',
+          sans-serif;
+        font-size: 16px;
+        line-height: 1.45;
+        -webkit-font-smoothing: antialiased;
+        -webkit-tap-highlight-color: transparent;
+      }
+      button,
+      input,
+      textarea,
+      select {
+        font-family: inherit;
+      }
+      :focus-visible {
+        outline: 2px solid var(--green);
+        outline-offset: 2px;
       }
     </style>
   </head>

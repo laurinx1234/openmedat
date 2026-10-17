@@ -101,10 +101,10 @@ function pickByArea(pieces) {
   return areas.length - 1
 }
 
-function applyCutToPiece(pieces, targetIdx, totalArea, angle, offset) {
+function applyCutToPiece(pieces, targetIdx, totalArea, angle, offset, cutR = 44) {
   const cx = 50,
     cy = 50,
-    r = 44
+    r = cutR
   const nx = Math.sin(angle),
     ny = -Math.cos(angle)
   for (const frac of [1.0, 0.6, 0.35, 0.0]) {
@@ -118,34 +118,44 @@ function applyCutToPiece(pieces, targetIdx, totalArea, angle, offset) {
   return null
 }
 
-function applyDoubleCut(pieces, targetIdx, totalArea) {
+function applyDoubleCut(pieces, targetIdx, totalArea, cutR = 44) {
   const angle1 = Math.random() * Math.PI
   const offset1 = Math.random() * 1.2 - 0.6
-  const result1 = applyCutToPiece(pieces, targetIdx, totalArea, angle1, offset1)
+  const result1 = applyCutToPiece(pieces, targetIdx, totalArea, angle1, offset1, cutR)
   if (!result1) return null
   const areaA = polyArea(result1[targetIdx])
   const areaB = polyArea(result1[targetIdx + 1])
   const secondTarget = areaA >= areaB ? targetIdx : targetIdx + 1
   const angle2 = angle1 + (Math.random() * 0.55 + 0.5) * (Math.random() < 0.5 ? 1 : -1)
   const offset2 = Math.random() * 1.0 - 0.5
-  const result2 = applyCutToPiece(result1, secondTarget, totalArea, angle2, offset2)
+  const result2 = applyCutToPiece(result1, secondTarget, totalArea, angle2, offset2, cutR)
   return result2 || result1
 }
 
-function genPolyPieces(sides) {
-  const poly = regPoly(sides)
+function genShapePieces(poly, cutR = 44) {
   const totalArea = polyArea(poly)
   let pieces = [poly]
   for (let cut = 0; cut < rnd(5, 9); cut++) {
     if (pieces.length >= 9) break
     const useDouble = Math.random() < 0.3
     const result = useDouble
-      ? applyDoubleCut(pieces, pickByArea(pieces), totalArea)
-      : applyCutToPiece(pieces, pickByArea(pieces), totalArea, Math.random() * Math.PI, Math.random() * 1.2 - 0.6)
+      ? applyDoubleCut(pieces, pickByArea(pieces), totalArea, cutR)
+      : applyCutToPiece(
+          pieces,
+          pickByArea(pieces),
+          totalArea,
+          Math.random() * Math.PI,
+          Math.random() * 1.2 - 0.6,
+          cutR
+        )
     if (result) pieces = result
   }
   const raw = pieces.filter((p) => p.length >= 3)
   return { raw, normalized: raw.map((p) => normPts(p)) }
+}
+
+function genPolyPieces(sides) {
+  return genShapePieces(regPoly(sides))
 }
 
 function genCircPieces(sweep) {
@@ -193,6 +203,40 @@ const CIRC_SHAPES = [
   { id: 'c2', label: 'Halbkreis', sweep: Math.PI, family: 'circle' },
   { id: 'c3', label: 'Dreiviertelkreis', sweep: 1.5 * Math.PI, family: 'circle' },
   { id: 'c4', label: 'Ganzer Kreis', sweep: 2 * Math.PI, family: 'circle' },
+]
+const TRI_SHAPES = [
+  { id: 't_eq', label: 'Gleichseitiges Dreieck', family: 'triangle', pts: regPoly(3) },
+  {
+    id: 't_iso',
+    label: 'Gleichschenkliges Dreieck',
+    family: 'triangle',
+    pts: [
+      [50, 44],
+      [94, 84],
+      [6, 84],
+    ],
+  },
+  {
+    id: 't_scal',
+    label: 'Allgemeines Dreieck',
+    family: 'triangle',
+    pts: [
+      [72, 44],
+      [94, 84],
+      [6, 84],
+    ],
+  },
+  {
+    id: 't_arrow',
+    label: 'Pfeil',
+    family: 'triangle',
+    pts: [
+      [50, 6],
+      [88.1, 72],
+      [50, 48],
+      [11.9, 72],
+    ],
+  },
 ]
 const PLACEHOLDER_SHAPES = [
   { id: 'ph_tri', label: 'Dreieck', isPlaceholder: true },
@@ -268,6 +312,14 @@ function AnswerSVG({ shape, size = 70 }) {
           stroke={stroke}
           strokeWidth={sw}
         />
+      </svg>
+    )
+  }
+  if (shape.family === 'triangle') {
+    const pts = shape.pts.map(([x, y]) => [(x * s) / 100, (y * s) / 100])
+    return (
+      <svg viewBox={`0 0 ${s} ${s}`} width={s} height={s}>
+        <path d={ptsToPath(pts)} fill={fill} stroke={stroke} strokeWidth={sw} strokeLinejoin="round" />
       </svg>
     )
   }
@@ -350,12 +402,16 @@ function WinkelDisplay({ deg, display = {}, size = 200 }) {
   )
 }
 
+function genPiecesFor(shape) {
+  if (shape.family === 'triangle') return genShapePieces(shape.pts, 26)
+  return shape.family === 'polygon' ? genPolyPieces(shape.sides) : genCircPieces(shape.sweep)
+}
+
 // ─── Task generators ────────────────────────────────────────────────────────────
 export function makeTask() {
-  const isCircle = Math.random() > 0.5
-  const family = isCircle ? CIRC_SHAPES : POLY_SHAPES
+  const family = pick([CIRC_SHAPES, POLY_SHAPES, TRI_SHAPES])
   const targetShape = pick(family)
-  const pd = targetShape.family === 'polygon' ? genPolyPieces(targetShape.sides) : genCircPieces(targetShape.sweep)
+  const pd = genPiecesFor(targetShape)
   const others = shuffle(family.filter((s) => s.id !== targetShape.id))
   const injectNone = Math.random() < 0.2
 
@@ -805,7 +861,7 @@ export default function Figuren({ onBack }) {
               background: T.teal,
               border: 'none',
               borderRadius: 10,
-              color: '#000',
+              color: T.onAccent,
               cursor: 'pointer',
               padding: '14px 32px',
               fontSize: 16,
@@ -944,7 +1000,7 @@ export default function Figuren({ onBack }) {
                   background: T.teal,
                   border: 'none',
                   borderRadius: 8,
-                  color: '#000',
+                  color: T.onAccent,
                   cursor: 'pointer',
                   padding: '8px 20px',
                   fontSize: 14,
@@ -996,7 +1052,7 @@ export default function Figuren({ onBack }) {
               background: T.teal,
               border: 'none',
               borderRadius: 10,
-              color: '#000',
+              color: T.onAccent,
               cursor: 'pointer',
               padding: '14px 32px',
               fontSize: 16,
@@ -1133,7 +1189,7 @@ export default function Figuren({ onBack }) {
                 background: T.teal,
                 border: 'none',
                 borderRadius: 8,
-                color: '#000',
+                color: T.onAccent,
                 cursor: 'pointer',
                 padding: '8px 20px',
                 fontSize: 14,
