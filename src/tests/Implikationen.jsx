@@ -92,19 +92,13 @@ export function makeTask() {
   }
 }
 
-const VENN_R = 84
 const VENN_W = 344
 const VENN_H = 292
 const VENN_BITS = { S: 1, M: 2, C: 4 }
-const VENN_CIRCLES = {
-  S: { cx: 130, cy: 118 },
-  M: { cx: 214, cy: 118 },
-  C: { cx: 172, cy: 192 },
-}
-const VENN_LABELS = {
-  S: { x: 88, y: 72 },
-  M: { x: 256, y: 72 },
-  C: { x: 172, y: 258 },
+const STATIC_VENN_CIRCLES = {
+  S: { cx: 130, cy: 118, r: 84, label: { x: 88, y: 72 } },
+  M: { cx: 214, cy: 118, r: 84, label: { x: 256, y: 72 } },
+  C: { cx: 172, cy: 192, r: 84, label: { x: 172, y: 258 } },
 }
 
 const VENN_REGION_STATS = (() => {
@@ -112,10 +106,10 @@ const VENN_REGION_STATS = (() => {
   for (let y = 0; y <= VENN_H; y += 2) {
     for (let x = 0; x <= VENN_W; x += 2) {
       let k = 0
-      for (const [name, c] of Object.entries(VENN_CIRCLES)) {
+      for (const [name, c] of Object.entries(STATIC_VENN_CIRCLES)) {
         const dx = x - c.cx
         const dy = y - c.cy
-        if (dx * dx + dy * dy <= VENN_R * VENN_R) k |= VENN_BITS[name]
+        if (dx * dx + dy * dy <= c.r * c.r) k |= VENN_BITS[name]
       }
       points[k].push([x, y])
     }
@@ -168,21 +162,114 @@ function applyPremises(premises) {
   return { shaded, marks }
 }
 
-function conclusionRegions(concl) {
-  if (concl !== 'alle' && concl !== 'einige' && concl !== 'kein' && concl !== 'einige_nicht') return []
-  const wantC = concl === 'kein' || concl === 'einige'
-  const regions = []
-  for (let k = 1; k < 8; k++) {
-    if (!(k & VENN_BITS.S)) continue
-    if (Boolean(k & VENN_BITS.C) === wantC) regions.push(k)
+function eulerCircles(task) {
+  if (task.concl === 'keine') return null
+  const all = []
+  const none = []
+  const some = []
+  for (const p of task.premises || []) {
+    if (p.quant === 'all') all.push(p)
+    else if (p.quant === 'none') none.push(p)
+    else some.push(p)
   }
-  return regions
+  const roles = ['S', 'M', 'C']
+  const third = (a, b) => roles.find((r) => r !== a && r !== b)
+  const circle = (cx, cy, r, lx, ly) => ({ cx, cy, r, label: { x: lx, y: ly } })
+  const nested = (inner, middle, outer) => ({
+    [inner]: circle(172, 150, 38, 172, 122),
+    [middle]: circle(172, 150, 68, 172, 94),
+    [outer]: circle(172, 150, 100, 172, 62),
+  })
+  const twoParents = (inner, p1, p2) => ({
+    [p1]: circle(125, 148, 82, 88, 105),
+    [p2]: circle(219, 148, 82, 256, 105),
+    [inner]: circle(172, 148, 32, 172, 148),
+  })
+  const nestedDisjoint = (inner, container, other) => ({
+    [container]: circle(118, 150, 82, 88, 94),
+    [inner]: circle(128, 162, 46, 128, 162),
+    [other]: circle(272, 150, 58, 272, 150),
+  })
+  const nestedExistential = (container, contained, other) => ({
+    [container]: circle(125, 150, 82, 88, 94),
+    [contained]: circle(150, 160, 50, 128, 132),
+    [other]: circle(238, 152, 62, 268, 108),
+  })
+  const disjointExistential = (target, mate, other) => ({
+    [target]: circle(112, 150, 72, 112, 98),
+    [mate]: circle(272, 150, 54, 272, 150),
+    [other]: circle(80, 215, 56, 52, 235),
+  })
+
+  if (all.length === 2) {
+    const [e1, e2] = all
+    if (e1.b === e2.a) return nested(e1.a, e1.b, e2.b)
+    if (e2.b === e1.a) return nested(e2.a, e2.b, e1.b)
+    if (e1.a === e2.a) return twoParents(e1.a, e1.b, e2.b)
+    return null
+  }
+  if (all.length === 1 && none.length === 1) {
+    const { a, b } = all[0]
+    return nestedDisjoint(a, b, third(a, b))
+  }
+  if (all.length === 1 && some.length === 1) {
+    const { a, b } = all[0]
+    return nestedExistential(b, a, third(a, b))
+  }
+  if (all.length === 0 && none.length === 1 && some.length === 1) {
+    const pair = [none[0].a, none[0].b]
+    const rel = some[0]
+    const target = pair.includes(rel.a) ? rel.a : rel.b
+    const mate = pair[0] === target ? pair[1] : pair[0]
+    return disjointExistential(target, mate, third(pair[0], pair[1]))
+  }
+  return null
+}
+
+function eulerMarks(task, circles) {
+  const marks = []
+  for (const p of task.premises || []) {
+    if (p.quant !== 'some' && p.quant !== 'some_not') continue
+    const want = p.quant === 'some'
+    const ca = circles[p.a]
+    const cb = circles[p.b]
+    const pts = []
+    for (let y = 4; y <= VENN_H - 4; y += 2) {
+      for (let x = 4; x <= VENN_W - 4; x += 2) {
+        const inA = (x - ca.cx) ** 2 + (y - ca.cy) ** 2 <= ca.r ** 2
+        if (!inA) continue
+        const inB = (x - cb.cx) ** 2 + (y - cb.cy) ** 2 <= cb.r ** 2
+        if (inB === want) pts.push([x, y])
+      }
+    }
+    if (!pts.length) continue
+    const cx = pts.reduce((s, q) => s + q[0], 0) / pts.length
+    const cy = pts.reduce((s, q) => s + q[1], 0) / pts.length
+    let best = pts[0]
+    let bestD = Infinity
+    for (const q of pts) {
+      const d = (q[0] - cx) ** 2 + (q[1] - cy) ** 2
+      if (d < bestD) {
+        bestD = d
+        best = q
+      }
+    }
+    if (!marks.some((m) => (m.x - best[0]) ** 2 + (m.y - best[1]) ** 2 < 100)) {
+      marks.push({ x: best[0], y: best[1] })
+    }
+  }
+  return marks
 }
 
 export function SyllogismVenn({ task }) {
   const uid = 'venn' + useId().replace(/:/g, '')
-  const { shaded, marks } = applyPremises(task.premises || [])
-  const conclRegions = conclusionRegions(task.concl)
+  const euler = eulerCircles(task)
+  const isEuler = !!euler
+  const circles = euler || STATIC_VENN_CIRCLES
+  const venn = isEuler ? { shaded: new Set(), marks: [] } : applyPremises(task.premises || [])
+  const marks = isEuler ? eulerMarks(task, circles) : venn.marks.map((k) => VENN_REGION_STATS[k])
+  const hasConclusion = task.concl !== 'keine'
+  const wantIntersection = task.concl === 'kein' || task.concl === 'einige'
   const regionIds = [1, 2, 3, 4, 5, 6, 7]
   const [sLabel, mLabel, cLabel] = vennLabels([task.S, task.M, task.C])
   const letters = { S: sLabel, M: mLabel, C: cLabel }
@@ -192,27 +279,49 @@ export function SyllogismVenn({ task }) {
       <svg
         viewBox={`0 0 ${VENN_W} ${VENN_H}`}
         role="img"
-        aria-label="Venn-Diagramm zu den Prämissen"
+        aria-label={isEuler ? 'Euler-Diagramm zu den Prämissen' : 'Venn-Diagramm zu den Prämissen'}
         style={{ width: '100%', maxWidth: 344, display: 'block', margin: '0 auto' }}
       >
         <defs>
-          <pattern id={`${uid}-hatch`} width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <line x1="0" y1="0" x2="0" y2="7" stroke={T.muted} strokeWidth="1.2" />
-          </pattern>
-          {regionIds.map((k) => (
-            <mask key={k} id={`${uid}-m${k}`} maskUnits="userSpaceOnUse" x="0" y="0" width={VENN_W} height={VENN_H}>
+          {!isEuler && (
+            <>
+              <pattern
+                id={`${uid}-hatch`}
+                width="7"
+                height="7"
+                patternUnits="userSpaceOnUse"
+                patternTransform="rotate(45)"
+              >
+                <line x1="0" y1="0" x2="0" y2="7" stroke={T.muted} strokeWidth="1.2" />
+              </pattern>
+              {regionIds.map((k) => (
+                <mask key={k} id={`${uid}-m${k}`} maskUnits="userSpaceOnUse" x="0" y="0" width={VENN_W} height={VENN_H}>
+                  <rect x="0" y="0" width={VENN_W} height={VENN_H} fill="#000" />
+                  {Object.entries(circles).map(([name, c]) =>
+                    k & VENN_BITS[name] ? <circle key={name} cx={c.cx} cy={c.cy} r={c.r} fill="#fff" /> : null
+                  )}
+                  {Object.entries(circles).map(([name, c]) =>
+                    !(k & VENN_BITS[name]) ? <circle key={name} cx={c.cx} cy={c.cy} r={c.r} fill="#000" /> : null
+                  )}
+                </mask>
+              ))}
+            </>
+          )}
+          {hasConclusion && wantIntersection && (
+            <clipPath id={`${uid}-clipS`}>
+              <circle cx={circles.S.cx} cy={circles.S.cy} r={circles.S.r} />
+            </clipPath>
+          )}
+          {hasConclusion && !wantIntersection && (
+            <mask id={`${uid}-notC`} maskUnits="userSpaceOnUse" x="0" y="0" width={VENN_W} height={VENN_H}>
               <rect x="0" y="0" width={VENN_W} height={VENN_H} fill="#000" />
-              {Object.entries(VENN_CIRCLES).map(([name, c]) =>
-                k & VENN_BITS[name] ? <circle key={name} cx={c.cx} cy={c.cy} r={VENN_R} fill="#fff" /> : null
-              )}
-              {Object.entries(VENN_CIRCLES).map(([name, c]) =>
-                !(k & VENN_BITS[name]) ? <circle key={name} cx={c.cx} cy={c.cy} r={VENN_R} fill="#000" /> : null
-              )}
+              <circle cx={circles.S.cx} cy={circles.S.cy} r={circles.S.r} fill="#fff" />
+              <circle cx={circles.C.cx} cy={circles.C.cy} r={circles.C.r} fill="#000" />
             </mask>
-          ))}
+          )}
         </defs>
         {regionIds.map((k) =>
-          shaded.has(k) ? (
+          venn.shaded.has(k) ? (
             <rect
               key={`s${k}`}
               x="0"
@@ -224,26 +333,38 @@ export function SyllogismVenn({ task }) {
             />
           ) : null
         )}
-        {conclRegions.map((k) => (
-          <rect
-            key={`c${k}`}
-            x="0"
-            y="0"
-            width={VENN_W}
-            height={VENN_H}
-            fill={T.green}
-            opacity="0.18"
-            mask={`url(#${uid}-m${k})`}
-          />
-        ))}
-        {Object.entries(VENN_CIRCLES).map(([name, c]) => (
-          <circle key={name} cx={c.cx} cy={c.cy} r={VENN_R} fill="none" stroke={T.muted} strokeWidth="1.4" />
-        ))}
-        {Object.entries(VENN_LABELS).map(([name, p]) => (
+        {hasConclusion &&
+          (wantIntersection ? (
+            <circle
+              cx={circles.C.cx}
+              cy={circles.C.cy}
+              r={circles.C.r}
+              fill={T.green}
+              opacity="0.18"
+              clipPath={`url(#${uid}-clipS)`}
+            />
+          ) : (
+            <rect x="0" y="0" width={VENN_W} height={VENN_H} fill={T.green} opacity="0.18" mask={`url(#${uid}-notC)`} />
+          ))}
+        {Object.entries(circles).map(([name, c]) => {
+          const highlight = isEuler && (name === 'S' || name === 'C')
+          return (
+            <circle
+              key={name}
+              cx={c.cx}
+              cy={c.cy}
+              r={c.r}
+              fill="none"
+              stroke={highlight ? T.green : T.muted}
+              strokeWidth={highlight ? 2 : 1.4}
+            />
+          )
+        })}
+        {Object.entries(circles).map(([name, c]) => (
           <text
             key={name}
-            x={p.x}
-            y={p.y}
+            x={c.label.x}
+            y={c.label.y}
             textAnchor="middle"
             dominantBaseline="central"
             fontSize={letters[name].length > 4 ? 10 : letters[name].length > 1 ? 12 : 15}
@@ -253,11 +374,11 @@ export function SyllogismVenn({ task }) {
             {letters[name]}
           </text>
         ))}
-        {marks.map((k) => (
+        {marks.map((m, i) => (
           <text
-            key={`x${k}`}
-            x={VENN_REGION_STATS[k].x}
-            y={VENN_REGION_STATS[k].y}
+            key={`x${i}`}
+            x={m.x}
+            y={m.y}
             textAnchor="middle"
             dominantBaseline="central"
             fontSize="21"
@@ -300,9 +421,18 @@ export function SyllogismVenn({ task }) {
           marginTop: 4,
         }}
       >
-        <span>▨ ausgeschlossen</span>
-        <span style={{ color: T.yellow }}>× mind. ein Element</span>
-        {conclRegions.length > 0 && <span style={{ color: T.green }}>■ Schlussfolgerung</span>}
+        {isEuler ? (
+          <>
+            {marks.length > 0 && <span style={{ color: T.yellow }}>× mind. ein Element</span>}
+            <span style={{ color: T.green }}>grün: Schlussfolgerung</span>
+          </>
+        ) : (
+          <>
+            <span>▨ ausgeschlossen</span>
+            <span style={{ color: T.yellow }}>× mind. ein Element</span>
+            {hasConclusion && <span style={{ color: T.green }}>■ Schlussfolgerung</span>}
+          </>
+        )}
       </div>
       {task.concl === 'keine' && (
         <div style={{ textAlign: 'center', color: T.muted, fontSize: 11, marginTop: 4 }}>
