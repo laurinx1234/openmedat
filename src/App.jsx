@@ -670,8 +670,9 @@ export default function App() {
           >
             openMedAT
           </h1>
-          <div style={{ display: 'flex', flex: 'none', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+          <div className="header-actions">
             <button
+              className="header-stat"
               onClick={() => navigate('/statistik')}
               style={{
                 minHeight: 44,

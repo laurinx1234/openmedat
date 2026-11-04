@@ -102,6 +102,22 @@
         outline: 2px solid var(--green);
         outline-offset: 2px;
       }
+      .header-actions {
+        display: flex;
+        flex: none;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+      }
+      @media (max-width: 480px) {
+        .header-actions {
+          flex-basis: 100%;
+          margin-left: 0;
+        }
+        .header-stat {
+          flex: 1;
+        }
+      }
     </style>
   </head>
   <body>
