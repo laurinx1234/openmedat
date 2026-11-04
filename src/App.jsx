@@ -334,6 +334,7 @@ function StatsImportDialog({ validIds, onClose, onImported }) {
 export default function App() {
   const route = useRoute()
   const [focused, setFocused] = useState(0)
+  const [kbActive, setKbActive] = useState(false)
   const showStats = route === '/statistik'
   const [stats, setStats] = useState(getStats)
   const [showImport, setShowImport] = useState(false)
@@ -379,15 +380,19 @@ export default function App() {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if (e.key === 'ArrowRight') {
         e.preventDefault()
+        setKbActive(true)
         setFocused((f) => Math.min(f + 1, TESTS.length - 1))
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault()
+        setKbActive(true)
         setFocused((f) => Math.max(f - 1, 0))
       } else if (e.key === 'ArrowDown') {
         e.preventDefault()
+        setKbActive(true)
         setFocused((f) => Math.min(f + cols, TESTS.length - 1))
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
+        setKbActive(true)
         setFocused((f) => Math.max(f - cols, 0))
       } else if (e.key === 'Enter') navigate(TESTS[focused].path)
       else if (e.key >= '1' && e.key <= '8') navigate(TESTS[parseInt(e.key) - 1].path)
@@ -697,7 +702,7 @@ export default function App() {
           }}
         >
           {TESTS.map((t, i) => (
-            <TestTile key={t.path} test={t} focused={focused === i} onClick={() => navigate(t.path)} />
+            <TestTile key={t.path} test={t} focused={kbActive && focused === i} onClick={() => navigate(t.path)} />
           ))}
         </div>
         <div style={{ textAlign: 'center', color: T.muted, fontSize: 13, lineHeight: 2 }}>

@@ -414,6 +414,7 @@ export function SettingRow({ label, options, value, onChange }) {
 // active: only attach keyboard handler when true (pass mode==='settings')
 export function useSettingsKeyboard(rows, onStart, onBack, active, initialPos = [0, 0]) {
   const [pos, setPos] = useState(initialPos)
+  const [kbActive, setKbActive] = useState(false)
   const ref = useRef({})
   // Always keep ref current so the handler sees latest values
   useEffect(() => {
@@ -433,6 +434,8 @@ export function useSettingsKeyboard(rows, onStart, onBack, active, initialPos = 
       let nr = r,
         nc = c,
         moved = false
+
+      if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) setKbActive(true)
 
       if (e.key === 'ArrowRight' && r < maxRow) {
         nc = Math.min(c + 1, rows[r].length - 1)
@@ -468,8 +471,8 @@ export function useSettingsKeyboard(rows, onStart, onBack, active, initialPos = 
   }, [active]) // re-attach/detach when active changes
 
   return {
-    isFocused: (r, c) => pos[0] === r && pos[1] === c,
-    isStartFocused: () => pos[0] >= rows.length,
+    isFocused: (r, c) => kbActive && pos[0] === r && pos[1] === c,
+    isStartFocused: () => kbActive && pos[0] >= rows.length,
   }
 }
 

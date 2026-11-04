@@ -255,15 +255,6 @@ function LetterArranger({ word, letters, solved, locked, onSolved }) {
       {complete && <div style={{ color: T.green, fontSize: 13, marginTop: 10, textAlign: 'center' }}>✓ Richtig!</div>}
       {!complete && !isLocked && (
         <div style={{ marginTop: 10, textAlign: 'center' }}>
-          {hintCount > 0 && (
-            <div style={{ color: T.muted, fontSize: 12, marginBottom: 8 }}>
-              {Array.from({ length: hintCount }, (_, i) => (
-                <span key={i} style={{ margin: '0 6px', whiteSpace: 'nowrap' }}>
-                  <span>{i + 1}.</span> <span style={{ color: T.mauve, fontWeight: 'bold' }}>{word[i]}</span>
-                </span>
-              ))}
-            </div>
-          )}
           {hintCount < word.length && (
             <button
               onClick={() => setHintCount((c) => c + 1)}
@@ -275,10 +266,20 @@ function LetterArranger({ word, letters, solved, locked, onSolved }) {
                 cursor: 'pointer',
                 padding: '6px 14px',
                 fontSize: 12,
+                minWidth: 96,
               }}
             >
               Tipp {hintCount > 0 ? `${hintCount}/${word.length}` : ''}
             </button>
+          )}
+          {hintCount > 0 && (
+            <div style={{ color: T.muted, fontSize: 12, marginTop: 8 }}>
+              {Array.from({ length: hintCount }, (_, i) => (
+                <span key={i} style={{ margin: '0 6px', whiteSpace: 'nowrap' }}>
+                  <span>{i + 1}.</span> <span style={{ color: T.mauve, fontWeight: 'bold' }}>{word[i]}</span>
+                </span>
+              ))}
+            </div>
           )}
           <div style={{ color: T.muted, fontSize: 12, marginTop: 8 }}>
             Ziehe die Buchstaben beliebig – am Ende müssen sie in richtiger Reihenfolge ungefähr auf einer Linie liegen.
