@@ -661,7 +661,7 @@ export default function App() {
         >
           <h1
             style={{
-              fontSize: 'clamp(28px, 7vw, 38px)',
+              fontSize: 38,
               fontWeight: 900,
               letterSpacing: '-0.03em',
               lineHeight: 1.1,
