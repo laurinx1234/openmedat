@@ -649,14 +649,23 @@ export default function App() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexWrap: 'wrap',
             gap: 16,
             marginBottom: 32,
           }}
         >
-          <h1 style={{ fontSize: 38, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.1, color: T.text }}>
+          <h1
+            style={{
+              fontSize: 'clamp(28px, 7vw, 38px)',
+              fontWeight: 900,
+              letterSpacing: '-0.03em',
+              lineHeight: 1.1,
+              color: T.text,
+            }}
+          >
             openMedAT
           </h1>
-          <div style={{ display: 'flex', flex: 'none', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', flex: 'none', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
             <button
               onClick={() => navigate('/statistik')}
               style={{
@@ -681,7 +690,7 @@ export default function App() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(340px, 100%), 1fr))',
             gridAutoRows: '1fr',
             gap: 16,
             marginBottom: 48,
