@@ -22,6 +22,8 @@ import { UNIQUE_WORDS } from '../data/words.js'
 
 const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 
+let taskSeq = 1
+
 export function makeTask() {
   const word = pick(UNIQUE_WORDS)
   const letters = word.split('')
@@ -48,11 +50,248 @@ export function makeTask() {
     opts = shuffle([...pool.slice(0, 3), correct])
     correctIdx = opts.indexOf(correct)
   }
-  return { word, display, opts: [...opts, 'keine'], correctIdx }
+  return { id: taskSeq++, word, display, opts: [...opts, 'keine'], correctIdx }
 }
 
-export function WortQuiz({ questions, answers, onAnswer, color, displayMode }) {
+const BOARD_W = 600
+const BOARD_H = 260
+const TILE_W = 42
+const TILE_H = 50
+const LINE_TOL = 15
+
+function scatterTiles(chars) {
+  const n = chars.length
+  const cols = Math.min(n, Math.ceil(n / 2))
+  const rows = Math.ceil(n / cols)
+  const cells = []
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) cells.push([r, c])
+  const picked = shuffle(cells).slice(0, n)
+  const stepX = cols > 1 ? (BOARD_W - 90) / (cols - 1) : 0
+  const stepY = rows > 1 ? (BOARD_H - 100) / (rows - 1) : 0
+  return chars.map((ch, i) => {
+    const [r, c] = picked[i]
+    return {
+      id: i,
+      ch,
+      x: 45 + c * stepX + (Math.random() - 0.5) * Math.min(stepX * 0.35, 40),
+      y: 50 + r * stepY + (Math.random() - 0.5) * Math.min(stepY * 0.3, 42),
+    }
+  })
+}
+
+function isLineSolved(tiles, word, sx = 1, sy = 1) {
+  const n = tiles.length
+  if (n < 2) return false
+  const pts = tiles.map((t) => ({ ch: t.ch, x: t.x * sx, y: t.y * sy }))
+  let cx = 0,
+    cy = 0
+  for (const t of pts) {
+    cx += t.x
+    cy += t.y
+  }
+  cx /= n
+  cy /= n
+  let sxx = 0,
+    syy = 0,
+    sxy = 0
+  for (const t of pts) {
+    const dx = t.x - cx
+    const dy = t.y - cy
+    sxx += dx * dx
+    syy += dy * dy
+    sxy += dx * dy
+  }
+  const theta = 0.5 * Math.atan2(2 * sxy, sxx - syy)
+  const ax = Math.cos(theta)
+  const ay = Math.sin(theta)
+  const proj = []
+  for (const t of pts) {
+    const dx = t.x - cx
+    const dy = t.y - cy
+    if (Math.abs(-dx * ay + dy * ax) > LINE_TOL) return false
+    proj.push({ ch: t.ch, p: dx * ax + dy * ay })
+  }
+  proj.sort((a, b) => a.p - b.p)
+  for (let i = 1; i < proj.length; i++) if (proj[i].p - proj[i - 1].p < 6) return false
+  const seq = proj.map((x) => x.ch).join('')
+  return seq === word || seq === [...word].reverse().join('')
+}
+
+function makeTiles(word, letters) {
+  const chars = [...letters]
+  if (chars.join('') === word && chars.length > 1) chars.push(chars.shift())
+  let tiles = scatterTiles(chars)
+  for (let i = 0; i < 8 && isLineSolved(tiles, word); i++) tiles = scatterTiles(chars)
+  return tiles
+}
+
+function LetterArranger({ word, letters, solved, locked, onSolved }) {
+  const isLocked = locked ?? solved
+  const boardRef = useRef(null)
+  const [tiles, setTiles] = useState(() => makeTiles(word, letters))
+  const [dragId, setDragId] = useState(null)
+  const [hintCount, setHintCount] = useState(0)
+  const dragRef = useRef(null)
+  const tilesRef = useRef(tiles)
+  const announced = useRef(false)
+  tilesRef.current = tiles
+
+  const trySolveRef = useRef(null)
+  trySolveRef.current = (list) => {
+    if (solved || isLocked || announced.current) return
+    const board = boardRef.current
+    if (!board) return
+    const rect = board.getBoundingClientRect()
+    if (isLineSolved(list, word, rect.width / BOARD_W, rect.height / BOARD_H)) {
+      announced.current = true
+      onSolved()
+    }
+  }
+
+  useEffect(() => {
+    if (dragId === null) return
+    const positionFor = (e, d) => {
+      const board = boardRef.current
+      const rect = board.getBoundingClientRect()
+      const px = ((e.clientX - rect.left) / rect.width) * BOARD_W + d.dx
+      const py = ((e.clientY - rect.top) / rect.height) * BOARD_H + d.dy
+      const hx = (TILE_W / 2 / rect.width) * BOARD_W
+      const hy = (TILE_H / 2 / rect.height) * BOARD_H
+      return {
+        x: Math.min(BOARD_W - hx, Math.max(hx, px)),
+        y: Math.min(BOARD_H - hy, Math.max(hy, py)),
+      }
+    }
+    const onMove = (e) => {
+      const d = dragRef.current
+      if (!d) return
+      const pos = positionFor(e, d)
+      setTiles((prev) => prev.map((t) => (t.id === d.id ? { ...t, ...pos } : t)))
+    }
+    const onUp = (e) => {
+      const d = dragRef.current
+      if (d) {
+        const pos = positionFor(e, d)
+        const finalTiles = tilesRef.current.map((t) => (t.id === d.id ? { ...t, ...pos } : t))
+        tilesRef.current = finalTiles
+        setTiles(finalTiles)
+        dragRef.current = null
+        setDragId(null)
+        trySolveRef.current(finalTiles)
+      } else {
+        setDragId(null)
+      }
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+    }
+  }, [dragId])
+
+  const complete = solved
+
+  const startDrag = (e, t) => {
+    if (isLocked) return
+    e.preventDefault()
+    const rect = boardRef.current.getBoundingClientRect()
+    const px = ((e.clientX - rect.left) / rect.width) * BOARD_W
+    const py = ((e.clientY - rect.top) / rect.height) * BOARD_H
+    dragRef.current = { id: t.id, dx: t.x - px, dy: t.y - py }
+    setDragId(t.id)
+  }
+
+  return (
+    <div>
+      <div
+        ref={boardRef}
+        data-letter-board=""
+        style={{
+          position: 'relative',
+          height: BOARD_H,
+          background: T.surf2,
+          borderRadius: 10,
+          overflow: 'hidden',
+          touchAction: 'none',
+          userSelect: 'none',
+        }}
+      >
+        {tiles.map((t) => (
+          <div
+            key={t.id}
+            data-letter-tile={t.id}
+            onPointerDown={(e) => startDrag(e, t)}
+            style={{
+              position: 'absolute',
+              left: `${(t.x / BOARD_W) * 100}%`,
+              top: `${(t.y / BOARD_H) * 100}%`,
+              transform: `translate(-50%, -50%)${dragId === t.id ? ' scale(1.08)' : ''}`,
+              width: TILE_W,
+              height: TILE_H,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: complete ? `${T.green}22` : T.surf,
+              border: `1px solid ${complete ? T.green : T.border}`,
+              borderRadius: 8,
+              color: complete ? T.green : T.yellow,
+              fontSize: 22,
+              fontWeight: 'bold',
+              cursor: isLocked ? 'default' : dragId === t.id ? 'grabbing' : 'grab',
+              touchAction: 'none',
+              userSelect: 'none',
+              boxShadow: dragId === t.id ? T.shadow : T.shadowSm,
+              transition: 'transform 0.08s, box-shadow 0.08s, background-color 0.15s, border-color 0.15s',
+              zIndex: dragId === t.id ? 2 : 1,
+            }}
+          >
+            {t.ch}
+          </div>
+        ))}
+      </div>
+      {complete && <div style={{ color: T.green, fontSize: 13, marginTop: 10, textAlign: 'center' }}>✓ Richtig!</div>}
+      {!complete && !isLocked && (
+        <div style={{ marginTop: 10, textAlign: 'center' }}>
+          {hintCount > 0 && (
+            <div style={{ color: T.muted, fontSize: 12, marginBottom: 8 }}>
+              {Array.from({ length: hintCount }, (_, i) => (
+                <span key={i} style={{ margin: '0 6px', whiteSpace: 'nowrap' }}>
+                  <span>{i + 1}.</span> <span style={{ color: T.mauve, fontWeight: 'bold' }}>{word[i]}</span>
+                </span>
+              ))}
+            </div>
+          )}
+          {hintCount < word.length && (
+            <button
+              onClick={() => setHintCount((c) => c + 1)}
+              style={{
+                background: 'none',
+                border: `1px solid ${T.border}`,
+                borderRadius: 8,
+                color: T.mauve,
+                cursor: 'pointer',
+                padding: '6px 14px',
+                fontSize: 12,
+              }}
+            >
+              Tipp {hintCount > 0 ? `${hintCount}/${word.length}` : ''}
+            </button>
+          )}
+          <div style={{ color: T.muted, fontSize: 12, marginTop: 8 }}>
+            Ziehe die Buchstaben beliebig – am Ende müssen sie in richtiger Reihenfolge ungefähr auf einer Linie liegen.
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function WortQuiz({ questions, answers, onAnswer, color, displayMode, quizType }) {
   const mode = displayMode || 'gemischt'
+  const dragMode = quizType === 'legen'
   const [focusedQ, setFocusedQ] = useState(0)
   const questionRefs = useRef({})
   const fqRef = useRef(focusedQ)
@@ -69,6 +308,8 @@ export function WortQuiz({ questions, answers, onAnswer, color, displayMode }) {
           questionRefs.current[nx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
           return nx
         })
+      } else if (dragMode) {
+        return
       } else if (e.key === 'ArrowDown') {
         e.preventDefault()
         const cur = fqRef.current,
@@ -89,7 +330,7 @@ export function WortQuiz({ questions, answers, onAnswer, color, displayMode }) {
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [onAnswer, questions])
+  }, [onAnswer, questions, dragMode])
 
   return (
     <div>
@@ -128,9 +369,19 @@ export function WortQuiz({ questions, answers, onAnswer, color, displayMode }) {
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ color: T.muted, fontSize: 13, marginBottom: 12 }}>
-                      Was ist der Anfangsbuchstabe des Wortes?
+                      {dragMode
+                        ? 'Bringe die Buchstaben in die richtige Reihenfolge.'
+                        : 'Was ist der Anfangsbuchstabe des Wortes?'}
                     </div>
-                    {mode === 'gemischt' && (
+                    {dragMode && (
+                      <LetterArranger
+                        word={q.word}
+                        letters={q.display}
+                        solved={answers[qi] !== null}
+                        onSolved={() => onAnswer(qi, q.correctIdx)}
+                      />
+                    )}
+                    {!dragMode && mode === 'gemischt' && (
                       <div
                         style={{
                           letterSpacing: 10,
@@ -146,7 +397,7 @@ export function WortQuiz({ questions, answers, onAnswer, color, displayMode }) {
                         {q.display.join('  ')}
                       </div>
                     )}
-                    {mode === 'getrennt' && (
+                    {!dragMode && mode === 'getrennt' && (
                       <div style={{ display: 'flex', gap: 16 }}>
                         <div
                           style={{
@@ -180,18 +431,19 @@ export function WortQuiz({ questions, answers, onAnswer, color, displayMode }) {
                         </div>
                       </div>
                     )}
-                    {mode === 'wolke' && <Buchstabenwolke letters={q.display} />}
+                    {!dragMode && mode === 'wolke' && <Buchstabenwolke letters={q.display} />}
                   </div>
                 </div>
-                {q.opts.map((o, i) => (
-                  <OptionBtn
-                    key={i}
-                    label={OPTS[i]}
-                    state={answers[qi] === i ? 'selected' : 'idle'}
-                    onClick={() => onAnswer(qi, i)}
-                    text={o === 'keine' ? 'Keine Option ist richtig.' : o}
-                  />
-                ))}
+                {!dragMode &&
+                  q.opts.map((o, i) => (
+                    <OptionBtn
+                      key={i}
+                      label={OPTS[i]}
+                      state={answers[qi] === i ? 'selected' : 'idle'}
+                      onClick={() => onAnswer(qi, i)}
+                      text={o === 'keine' ? 'Keine Option ist richtig.' : o}
+                    />
+                  ))}
               </Card>
             </div>
           )
@@ -246,6 +498,7 @@ function Buchstabenwolke({ letters }) {
 export default function Wortfluessigkeit({ onBack }) {
   const [mode, setMode] = useState('settings')
   const [count, setCount] = useState(15)
+  const [quizType, setQuizType] = useState('anfangsbuchstabe')
   const [displayMode, setDisplayMode] = useState('gemischt')
   const [questions, setQuestions] = useState([])
   const [answers, setAnswers] = useState([])
@@ -319,12 +572,13 @@ export default function Wortfluessigkeit({ onBack }) {
         finishGame()
         return
       }
+      if (quizType === 'legen') return
       const i = KEYS.indexOf(e.key.toLowerCase())
       if (i >= 0 && i < 5) endlessAnswer(i)
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [mode, done, showFb, endless, curQ])
+  }, [mode, done, showFb, endless, curQ, quizType])
 
   // Escape in non-endless game mode
   useEffect(() => {
@@ -345,6 +599,25 @@ export default function Wortfluessigkeit({ onBack }) {
       setShowFb(true)
       setTimeout(() => setFbReady(true), 200)
     }, 80)
+  }
+
+  function dragSolved() {
+    if (selected !== null) return
+    setSelected(curQ.correctIdx)
+    setEndlessSc((s) => s + 1)
+    setEndlessTot((t) => t + 1)
+    setTimeout(() => {
+      setShowFb(true)
+      setTimeout(() => setFbReady(true), 200)
+    }, 250)
+  }
+
+  function revealWord() {
+    if (selected !== null) return
+    setSelected(-1)
+    setEndlessTot((t) => t + 1)
+    setShowFb(true)
+    setTimeout(() => setFbReady(true), 200)
   }
 
   function nextQ() {
@@ -370,12 +643,14 @@ export default function Wortfluessigkeit({ onBack }) {
 
   const skRows = [
     [{ action: () => setCount(15) }, { action: () => setCount(0) }],
-    [
+    [{ action: () => setQuizType('anfangsbuchstabe') }, { action: () => setQuizType('legen') }],
+  ]
+  if (quizType === 'anfangsbuchstabe')
+    skRows.push([
       { action: () => setDisplayMode('gemischt') },
       { action: () => setDisplayMode('getrennt') },
       { action: () => setDisplayMode('wolke') },
-    ],
-  ]
+    ])
   const { isFocused: skF, isStartFocused: skS } = useSettingsKeyboard(skRows, startGame, onBack, mode === 'settings')
   if (mode === 'settings')
     return (
@@ -409,22 +684,21 @@ export default function Wortfluessigkeit({ onBack }) {
               ))}
             </div>
           </div>
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ color: T.muted, fontSize: 13, marginBottom: 10 }}>Darstellungsmodus:</div>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ color: T.muted, fontSize: 13, marginBottom: 10 }}>Übungsmodus:</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {[
-                { v: 'gemischt', l: 'Gemischt' },
-                { v: 'getrennt', l: 'Vokale / Konsonanten' },
-                { v: 'wolke', l: 'Buchstabenwolke' },
+                { v: 'anfangsbuchstabe', l: 'Anfangsbuchstabe' },
+                { v: 'legen', l: 'Buchstaben legen' },
               ].map((o, i) => (
                 <button
                   key={o.v}
-                  onClick={() => setDisplayMode(o.v)}
+                  onClick={() => setQuizType(o.v)}
                   style={{
-                    background: displayMode === o.v ? `${T.mauve}25` : T.surf2,
-                    border: `1px solid ${displayMode === o.v ? T.mauve : T.border}`,
+                    background: quizType === o.v ? `${T.mauve}25` : T.surf2,
+                    border: `1px solid ${quizType === o.v ? T.mauve : T.border}`,
                     borderRadius: 8,
-                    color: displayMode === o.v ? T.mauve : T.text,
+                    color: quizType === o.v ? T.mauve : T.text,
                     cursor: 'pointer',
                     padding: '8px 18px',
                     fontSize: 14,
@@ -435,7 +709,41 @@ export default function Wortfluessigkeit({ onBack }) {
                 </button>
               ))}
             </div>
+            {quizType === 'legen' && (
+              <div style={{ color: T.muted, fontSize: 12, marginTop: 8 }}>
+                Buchstaben frei verschieben und am Ende in richtiger Reihenfolge auf einer Linie anordnen.
+              </div>
+            )}
           </div>
+          {quizType === 'anfangsbuchstabe' && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ color: T.muted, fontSize: 13, marginBottom: 10 }}>Darstellungsmodus:</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[
+                  { v: 'gemischt', l: 'Gemischt' },
+                  { v: 'getrennt', l: 'Vokale / Konsonanten' },
+                  { v: 'wolke', l: 'Buchstabenwolke' },
+                ].map((o, i) => (
+                  <button
+                    key={o.v}
+                    onClick={() => setDisplayMode(o.v)}
+                    style={{
+                      background: displayMode === o.v ? `${T.mauve}25` : T.surf2,
+                      border: `1px solid ${displayMode === o.v ? T.mauve : T.border}`,
+                      borderRadius: 8,
+                      color: displayMode === o.v ? T.mauve : T.text,
+                      cursor: 'pointer',
+                      padding: '8px 18px',
+                      fontSize: 14,
+                      boxShadow: skF(2, i) ? `0 0 0 2px ${T.mauve}` : 'none',
+                    }}
+                  >
+                    {o.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <button
             onClick={startGame}
             style={{
@@ -500,55 +808,92 @@ export default function Wortfluessigkeit({ onBack }) {
           <ScoreBar score={endlessSc} total={endlessTot} color={T.mauve} />
         </div>
         <Card>
-          <div style={{ color: T.muted, fontSize: 13, marginBottom: 12 }}>Was ist der Anfangsbuchstabe des Wortes?</div>
-          {dm === 'gemischt' && (
-            <div
-              style={{
-                letterSpacing: 10,
-                fontSize: 32,
-                fontWeight: 'bold',
-                color: T.yellow,
-                textAlign: 'center',
-                padding: '20px 0',
-                background: T.surf2,
-                borderRadius: 10,
-                marginBottom: 16,
-              }}
-            >
-              {q.display.join('  ')}
-            </div>
-          )}
-          {dm === 'getrennt' && (
-            <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-              <div style={{ flex: 1, background: T.surf2, borderRadius: 10, padding: '16px', textAlign: 'center' }}>
-                <div style={{ color: T.muted, fontSize: 11, letterSpacing: 2, marginBottom: 8 }}>VOKALE</div>
-                <div style={{ fontSize: 24, fontWeight: 'bold', color: T.teal, letterSpacing: 8 }}>
-                  {vok.length ? vok.join('  ') : '–'}
-                </div>
-              </div>
-              <div style={{ flex: 1, background: T.surf2, borderRadius: 10, padding: '16px', textAlign: 'center' }}>
-                <div style={{ color: T.muted, fontSize: 11, letterSpacing: 2, marginBottom: 8 }}>KONSONANTEN</div>
-                <div style={{ fontSize: 24, fontWeight: 'bold', color: T.orange, letterSpacing: 8 }}>
-                  {kons.length ? kons.join('  ') : '–'}
-                </div>
-              </div>
-            </div>
-          )}
-          {dm === 'wolke' && (
+          <div style={{ color: T.muted, fontSize: 13, marginBottom: 12 }}>
+            {quizType === 'legen'
+              ? 'Bringe die Buchstaben in die richtige Reihenfolge.'
+              : 'Was ist der Anfangsbuchstabe des Wortes?'}
+          </div>
+          {quizType === 'legen' ? (
             <div style={{ marginBottom: 16 }}>
-              <Buchstabenwolke letters={q.display} />
+              <LetterArranger
+                key={q.id}
+                word={q.word}
+                letters={q.display}
+                solved={selected === q.correctIdx}
+                locked={selected !== null}
+                onSolved={dragSolved}
+              />
+              {selected === null && (
+                <div style={{ textAlign: 'center', marginTop: 12 }}>
+                  <button
+                    onClick={revealWord}
+                    style={{
+                      background: 'none',
+                      border: `1px solid ${T.border}`,
+                      borderRadius: 8,
+                      color: T.muted,
+                      cursor: 'pointer',
+                      padding: '6px 14px',
+                      fontSize: 12,
+                    }}
+                  >
+                    Auflösen
+                  </button>
+                </div>
+              )}
             </div>
+          ) : (
+            <>
+              {dm === 'gemischt' && (
+                <div
+                  style={{
+                    letterSpacing: 10,
+                    fontSize: 32,
+                    fontWeight: 'bold',
+                    color: T.yellow,
+                    textAlign: 'center',
+                    padding: '20px 0',
+                    background: T.surf2,
+                    borderRadius: 10,
+                    marginBottom: 16,
+                  }}
+                >
+                  {q.display.join('  ')}
+                </div>
+              )}
+              {dm === 'getrennt' && (
+                <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+                  <div style={{ flex: 1, background: T.surf2, borderRadius: 10, padding: '16px', textAlign: 'center' }}>
+                    <div style={{ color: T.muted, fontSize: 11, letterSpacing: 2, marginBottom: 8 }}>VOKALE</div>
+                    <div style={{ fontSize: 24, fontWeight: 'bold', color: T.teal, letterSpacing: 8 }}>
+                      {vok.length ? vok.join('  ') : '–'}
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, background: T.surf2, borderRadius: 10, padding: '16px', textAlign: 'center' }}>
+                    <div style={{ color: T.muted, fontSize: 11, letterSpacing: 2, marginBottom: 8 }}>KONSONANTEN</div>
+                    <div style={{ fontSize: 24, fontWeight: 'bold', color: T.orange, letterSpacing: 8 }}>
+                      {kons.length ? kons.join('  ') : '–'}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {dm === 'wolke' && (
+                <div style={{ marginBottom: 16 }}>
+                  <Buchstabenwolke letters={q.display} />
+                </div>
+              )}
+              {q.opts.map((o, i) => (
+                <OptionBtn
+                  key={i}
+                  label={OPTS[i]}
+                  state={getState(i)}
+                  onClick={() => endlessAnswer(i)}
+                  text={o === 'keine' ? 'Keine Option ist richtig.' : o}
+                />
+              ))}
+              {!showFb && <KeyHint />}
+            </>
           )}
-          {q.opts.map((o, i) => (
-            <OptionBtn
-              key={i}
-              label={OPTS[i]}
-              state={getState(i)}
-              onClick={() => endlessAnswer(i)}
-              text={o === 'keine' ? 'Keine Option ist richtig.' : o}
-            />
-          ))}
-          {!showFb && <KeyHint />}
           {showFb && (
             <div style={{ marginTop: 16, background: T.surf2, borderRadius: 12, padding: '16px 20px' }}>
               <div style={{ color: T.muted, fontSize: 13, marginBottom: 6 }}>
@@ -560,6 +905,10 @@ export default function Wortfluessigkeit({ onBack }) {
               <div style={{ fontSize: 14, marginBottom: 14 }}>
                 {selected === q.correctIdx ? (
                   <span style={{ color: T.green }}>✓ Richtig!</span>
+                ) : quizType === 'legen' ? (
+                  <span>
+                    Nicht gelöst – richtig wäre <span style={{ color: T.green, fontWeight: 'bold' }}>{q.word}</span>.
+                  </span>
                 ) : (
                   <span>
                     Richtige Antwort:{' '}
@@ -618,10 +967,19 @@ export default function Wortfluessigkeit({ onBack }) {
         </div>
       </div>
       <ProgressBar current={tot + 1} total={count} color={T.mauve} />
-      <WortQuiz questions={questions} answers={answers} onAnswer={answer} color={T.mauve} displayMode={displayMode} />
-      <div style={{ marginTop: 12 }}>
-        <KeyHint />
-      </div>
+      <WortQuiz
+        questions={questions}
+        answers={answers}
+        onAnswer={answer}
+        color={T.mauve}
+        displayMode={displayMode}
+        quizType={quizType}
+      />
+      {quizType !== 'legen' && (
+        <div style={{ marginTop: 12 }}>
+          <KeyHint />
+        </div>
+      )}
       <div style={{ marginTop: 24, textAlign: 'center' }}>
         <button
           onClick={finishGame}
